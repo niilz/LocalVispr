@@ -9,19 +9,26 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 // ==============================================================================
-// 16 kHz mono PCM microphone capture
+// 16 kHz mono PCM microphone capture with live speech-level metering
 // ==============================================================================
 //
-// Matches the capture configuration of the reference app and the native sample
-// rate expected by Whisper in sherpa-onnx, avoiding any resampling step.
+// Matches the capture configuration and dB/SNR level metering of the reference
+// app (`VoiceRecorder.meterValue`): `audioLevel` stays at 0.0 during silence and
+// rises towards 1.0 only when speech energy exceeds the noise floor.
 
 class VoiceRecorder {
 
     private val recording = AtomicBoolean(false)
     private var worker: Thread? = null
     private val pcmBytes = ByteArrayOutputStream()
+
+    private val _audioLevel = MutableStateFlow(0f)
+    val audioLevel: StateFlow<Float> = _audioLevel.asStateFlow()
 
     val isRecording: Boolean
         get() = recording.get()
@@ -30,7 +37,8 @@ class VoiceRecorder {
     @SuppressLint("MissingPermission")
     fun start(): Boolean {
         if (!recording.compareAndSet(false, true)) return false
-        pcmBytes.reset()
+        synchronized(pcmBytes) { pcmBytes.reset() }
+        _audioLevel.value = 0f
 
         val minBuf =
             AudioRecord.getMinBufferSize(
@@ -60,13 +68,15 @@ class VoiceRecorder {
 
         worker =
             thread(name = "localvispr-mic") {
-                val chunk = ShortArray(1024)
+                // 512 samples = 32 ms per read -> ~31 level updates per second.
+                val chunk = ShortArray(512)
                 val byteChunk = ByteBuffer.allocate(chunk.size * 2).order(ByteOrder.LITTLE_ENDIAN)
                 try {
                     audioRecord.startRecording()
                     while (recording.get()) {
                         val read = audioRecord.read(chunk, 0, chunk.size)
                         if (read > 0) {
+                            _audioLevel.value = PcmSamples.speechLevel(chunk, read)
                             byteChunk.clear()
                             for (i in 0 until read) byteChunk.putShort(chunk[i])
                             synchronized(pcmBytes) {
@@ -75,6 +85,7 @@ class VoiceRecorder {
                         }
                     }
                 } finally {
+                    _audioLevel.value = 0f
                     runCatching { audioRecord.stop() }
                     audioRecord.release()
                 }
@@ -86,11 +97,20 @@ class VoiceRecorder {
         if (!recording.compareAndSet(true, false)) return FloatArray(0)
         worker?.join(1_500)
         worker = null
+        _audioLevel.value = 0f
 
         val raw = synchronized(pcmBytes) { pcmBytes.toByteArray() }
         val shortCount = raw.size / 2
         val shorts = ShortArray(shortCount)
         ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shorts)
         return PcmSamples.shortsToFloats(shorts)
+    }
+
+    fun cancel() {
+        if (!recording.compareAndSet(true, false)) return
+        worker?.join(1_500)
+        worker = null
+        _audioLevel.value = 0f
+        synchronized(pcmBytes) { pcmBytes.reset() }
     }
 }

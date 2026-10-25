@@ -22,4 +22,13 @@ class PcmSamplesTest {
         assertTrue(PcmSamples.isEffectivelySilent(FloatArray(8000) { 0.0005f }))
         assertFalse(PcmSamples.isEffectivelySilent(FloatArray(8000) { 0.1f }))
     }
+
+    @Test
+    fun speechMeterStaysZeroOnSilenceAndRisesOnSpeech() {
+        val silence = ShortArray(512) { 2 }
+        val loudSpeech = ShortArray(512) { i -> if (i % 2 == 0) 6000 else -6000 }
+
+        assertEquals(0f, PcmSamples.speechLevel(silence, silence.size), absoluteTolerance = 1e-4f)
+        assertTrue(PcmSamples.speechLevel(loudSpeech, loudSpeech.size) > 0.4f)
+    }
 }

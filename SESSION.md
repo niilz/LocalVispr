@@ -18,3 +18,5 @@
 - Deferred option: an additional `InputMethodService` (custom keyboard / IME) can
   be added alongside the floating bubble if the user wants a keyboard mic button
   later on.
+- GitHub CLI (`gh`) is installed in the dev container but not authenticated (`gh auth login` required).
+

@@ -16,6 +16,7 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.LinearLayout
 import android.widget.Toast
 import dev.localvispr.AppContainer
 import dev.localvispr.MainActivity
@@ -44,16 +45,19 @@ enum class DictationState {
 // Foreground overlay bubble service (`TYPE_APPLICATION_OVERLAY`)
 // ==============================================================================
 //
-// Shows a draggable floating pill on top of other apps. Tapping once starts
-// 16 kHz microphone capture; tapping again runs offline Whisper + the local
-// cleanup pipeline and injects the result through `VisprAccessibilityService`.
+// Shows a draggable circular Cyberpunk-V bubble on top of other apps. When the
+// user starts dictating, a companion equalizer pill (`WaveformPillView`) pops up
+// next to it — just like Wispr Flow's `BubblePOPOComposable` — showing 10 bars
+// that stay still on silence and move only when speech arrives.
 
 class FloatingBubbleService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val recorder = VoiceRecorder()
     private var windowManager: WindowManager? = null
+    private var rootContainer: LinearLayout? = null
     private var bubbleView: CyberpunkVBubbleView? = null
+    private var waveformPillView: WaveformPillView? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -62,6 +66,10 @@ class FloatingBubbleService : Service() {
         startAsForeground()
         if (Settings.canDrawOverlays(this)) {
             attachBubble()
+        }
+        // Forward live microphone speech levels into the equalizer pill.
+        scope.launch {
+            recorder.audioLevel.collect { level -> waveformPillView?.setAudioLevel(level) }
         }
         _running.value = true
     }
@@ -77,9 +85,11 @@ class FloatingBubbleService : Service() {
     override fun onDestroy() {
         _running.value = false
         _dictationState.value = DictationState.IDLE
-        if (recorder.isRecording) recorder.stopAndTakeSamples()
-        bubbleView?.let { runCatching { windowManager?.removeView(it) } }
+        if (recorder.isRecording) recorder.cancel()
+        rootContainer?.let { runCatching { windowManager?.removeView(it) } }
+        rootContainer = null
         bubbleView = null
+        waveformPillView = null
         scope.cancel()
         super.onDestroy()
     }
@@ -109,7 +119,13 @@ class FloatingBubbleService : Service() {
         }
     }
 
+    private fun cancelDictation() {
+        recorder.cancel()
+        setState(DictationState.IDLE)
+    }
+
     private fun finishDictation() {
+        if (_dictationState.value != DictationState.LISTENING) return
         setState(DictationState.PROCESSING)
         val container = AppContainer.get(this)
         val settings = container.settings.state.value
@@ -155,6 +171,7 @@ class FloatingBubbleService : Service() {
     private fun setState(next: DictationState) {
         _dictationState.value = next
         bubbleView?.setDictationState(next)
+        waveformPillView?.setDictationState(next)
     }
 
     private fun attachBubble() {
@@ -176,18 +193,47 @@ class FloatingBubbleService : Service() {
                     y = dp(180)
                 }
 
-        val view =
+        val vBubble =
             CyberpunkVBubbleView(this).apply {
                 elevation = dp(8).toFloat()
                 setDictationState(_dictationState.value)
             }
-        installDragAndTapListener(view, params, wm)
-        wm.addView(view, params)
-        bubbleView = view
+        val pill =
+            WaveformPillView(
+                    context = this,
+                    onCancelTapped = ::cancelDictation,
+                    onConfirmTapped = ::finishDictation,
+                )
+                .apply {
+                    elevation = dp(8).toFloat()
+                    setDictationState(_dictationState.value)
+                }
+
+        val container =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(vBubble)
+                addView(
+                    pill,
+                    LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                            LinearLayout.LayoutParams.WRAP_CONTENT,
+                        )
+                        .apply { marginStart = dp(8) },
+                )
+            }
+
+        installDragAndTapListener(vBubble, container, params, wm)
+        wm.addView(container, params)
+        rootContainer = container
+        bubbleView = vBubble
+        waveformPillView = pill
     }
 
     private fun installDragAndTapListener(
-        view: View,
+        handleView: View,
+        containerView: View,
         params: WindowManager.LayoutParams,
         wm: WindowManager,
     ) {
@@ -198,7 +244,7 @@ class FloatingBubbleService : Service() {
         var dragged = false
         val slop = dp(8)
 
-        view.setOnTouchListener { v, event ->
+        handleView.setOnTouchListener { v, event ->
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     startX = params.x
@@ -215,7 +261,7 @@ class FloatingBubbleService : Service() {
                     if (dragged) {
                         params.x = startX + dx
                         params.y = startY + dy
-                        wm.updateViewLayout(v, params)
+                        wm.updateViewLayout(containerView, params)
                     }
                     true
                 }
