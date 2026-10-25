@@ -1,17 +1,35 @@
-# LocalVispr – Feature- & TODO-Liste
+# LocalVispr – Priorisierte Feature- & TODO-Liste
 
-## Geplante Features
+Diese Liste wurde per paarweisem Vergleich im Vergleich zur Referenz-App (*Wispr Flow v2.8.3*) priorisiert:
 
-- [ ] **Live-Transkription & dynamische Text-Korrektur während des Sprechens**
-  - **Variante A (Overlay-Vorschau):** Während der Aufnahme periodisch (~1–1,5 s) das bisherige Audio-Fenster transkribieren und den wachsenden Text zusammen mit einem Live-Mikrofonpegel direkt in/an der schwebenden Blase anzeigen; beim Stoppen den final geglätteten Text einfügen.
-  - **Variante B (Live im Ziel-Textfeld mit Korrektur):** Zwischenstände sofort per `AccessibilityInputConnection.commitText(...)` ins fokussierte Eingabefeld schreiben und bei kontextbezogenen Korrekturen oder dem finalen LLM-Durchlauf das geänderte Suffix per `deleteSurroundingText(beforeLength, 0)` + `commitText(...)` ersetzen.
-- [x] **Live-Audio-Pegel / Wellenform in der Blase**
-  - Visuelles Feedback während `DictationState.LISTENING` (analog zu `DictationPhase.Dictating(audioLevel)` in der Referenz-App), damit man sofort sieht, ob das Mikrofon Signal bekommt.
-- [ ] **Optionale eigene Tastatur (`InputMethodService` / IME)**
-  - Zweiter Auslöser neben der schwebenden Blase; ermöglicht außerdem natives `InputConnection.setComposingText(...)` (unterstrichener Live-Text während des Diktierens, der sich rückwirkend glätten lässt).
-- [ ] **Kontext-abhängige Stil-Vorgaben (Personalization Styles)**
-  - Unterschiedliche Bereinigungs-Stile je nach Ziel-App oder Auswahl (z. B. Chat/Locker, E-Mail/Formell, Code/Prompt).
-- [ ] **Automatisches Ein-/Ausblenden der Blase**
-  - Blase optional nur dann anzeigen, wenn `VisprAccessibilityService.hasEditableFocus` erkennt, dass ein Textfeld fokussiert bzw. die Bildschirmtastatur offen ist.
-- [ ] **R8 / ProGuard-Regeln für Release-Builds**
-  - Keep-Regeln für die JNI-Klassen von `sherpa-onnx` und `litertlm-android` verifizieren und `isMinifyEnabled = true` aktivieren.
+## Priorisierte Roadmap
+
+- [ ] **1. Auto-Show / Auto-Hide der Blase**
+  - Blase nur dann auf dem Bildschirm anzeigen, wenn ein bearbeitbares Textfeld fokussiert oder die Bildschirmtastatur aktiv ist (`SoftKeyboardStateTracker`, `FocusedNodeFinder` im Accessibility Service).
+- [ ] **2. Umfeld-Kontext (`ax_context`)**
+  - Vor der Glättung umliegenden Text im fokussierten Feld via `getSurroundingText(...)` sowie die aktive Ziel-App auslesen und an das LLM übergeben (für Groß-/Kleinschreibung, Satzanschlüsse und Fachkontext).
+- [ ] **3. Bluetooth- & Headset-Routing (`AudioDeviceCallback`)**
+  - Dynamisches Routing des Audio-Inputs auf verbundene Bluetooth-Headsets (SCO/HFP) oder kabelgebundene Mikrofone über den `AudioManager`.
+- [ ] **4. Live-Transkription (Streaming)**
+  - Während der Aufnahme periodisch Zwischenstände transkribieren und wahlweise als Overlay-Vorschau oder direkt via `commitText(...)` / `deleteSurroundingText(...)` im Ziel-Feld aktualisieren.
+- [ ] **5. Stil- und Tonalitäts-Profile**
+  - Wählbare Modi für die Bereinigung (z. B. *Casual/Chat*, *Formal/E-Mail*, *Code/Prompt*, *Bullet Points*).
+- [ ] **6. Persönliches Wörterbuch (`dictionary_words`)**
+  - Möglichkeit für den Nutzer, eigene Fachbegriffe, Eigennamen und Abkürzungen zu hinterlegen, damit Whisper und das LLM diese bevorzugt und korrekt schreiben.
+- [ ] **7. Haptisches Feedback**
+  - Taktile Vibrationsbestätigung beim Starten, Stoppen der Aufnahme und nach erfolgreicher Textinjektion.
+- [ ] **8. Schüttel-Geste (Shake-to-Dictate)**
+  - Optionales Triggern der Aufnahme durch kurzes Schütteln des Smartphones (`ShakeDetector` via Accelerometer).
+- [ ] **9. Diktat-Historie**
+  - Lokale Room-Datenbank zur Speicherung vergangener Diktate mit Such- und Kopierfunktion.
+- [ ] **10. Snooze-Funktion**
+  - Schnelles temporäres Ausblenden / Stummschalten der Blase (z. B. für 1 Stunde oder bis zum nächsten App-Wechsel).
+- [ ] **11. Live-Audio-Pegel / Wellenform-Animation**
+  - Visuelles Waveform-Feedback auf der schwebenden Blase während `DictationState.LISTENING`.
+
+---
+
+## Zusätzliche technische Aufgaben
+
+- [ ] **Optionale eigene Tastatur (`InputMethodService` / IME):** Zweiter Auslöser und nativer composing text.
+- [ ] **R8 / ProGuard Keep-Regeln:** Release-Verifizierung für native JNI-Klassen (`sherpa-onnx`, `litertlm-android`).
