@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 
 // Null means "detect automatically from Whisper's language token / word heuristic".
 enum class LanguagePreference(val label: String, val fixedLanguage: Language?) {
-    AUTO("Deutsch & English (Auto)", null),
+    AUTO("Auto (DE/EN)", null),
     GERMAN("Deutsch", Language.GERMAN),
     ENGLISH("English", Language.ENGLISH),
 }

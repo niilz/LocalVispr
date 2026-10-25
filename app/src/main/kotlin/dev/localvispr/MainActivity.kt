@@ -12,12 +12,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -46,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -68,7 +73,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun MainScreen(container: AppContainer) {
     val context = LocalContext.current
@@ -211,12 +216,15 @@ private fun MainScreen(container: AppContainer) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("2. Diktat-Sprache", style = MaterialTheme.typography.titleMedium)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
                         LanguagePreference.entries.forEach { pref ->
                             FilterChip(
                                 selected = settings.languagePreference == pref,
                                 onClick = { container.settings.setLanguagePreference(pref) },
-                                label = { Text(pref.label) },
+                                label = { Text(pref.label, maxLines = 1, softWrap = false) },
                             )
                         }
                     }
@@ -344,9 +352,17 @@ private fun PermissionRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(if (granted) "✓ $label" else "• $label")
+        Text(
+            text = if (granted) "✓ $label" else "• $label",
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+        )
         if (!granted) {
-            OutlinedButton(onClick = onClick) { Text(actionLabel) }
+            OutlinedButton(
+                onClick = onClick,
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+            ) {
+                Text(actionLabel, maxLines = 1, softWrap = false)
+            }
         }
     }
 }
@@ -369,19 +385,30 @@ private fun ModelRow(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 RadioButton(selected = selected, onClick = onSelect)
-                Column {
-                    Text(spec.title, style = MaterialTheme.typography.bodyLarge)
+                Column(Modifier.padding(end = 8.dp)) {
+                    Text(
+                        text = spec.title,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                     Text(spec.subtitle, style = MaterialTheme.typography.bodySmall)
                 }
             }
+            Spacer(Modifier.width(4.dp))
             when (status) {
-                is DownloadStatus.Running -> Text("Lädt…")
+                is DownloadStatus.Running -> Text("Lädt…", maxLines = 1, softWrap = false)
                 else ->
                     if (installed) {
-                        TextButton(onClick = onDelete) { Text("Löschen") }
+                        TextButton(onClick = onDelete) {
+                            Text("Löschen", maxLines = 1, softWrap = false)
+                        }
                     } else {
-                        OutlinedButton(onClick = onDownload) {
-                            Text("${spec.approxSizeMb} MB laden")
+                        OutlinedButton(
+                            onClick = onDownload,
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                        ) {
+                            Text("${spec.approxSizeMb} MB laden", maxLines = 1, softWrap = false)
                         }
                     }
             }
