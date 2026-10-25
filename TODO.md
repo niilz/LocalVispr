@@ -1,6 +1,6 @@
 # LocalVispr – Priorisierte Feature- & TODO-Liste
 
-Diese Liste wurde per paarweisem Vergleich im Vergleich zur Referenz-App (*Wispr Flow v2.8.3*) priorisiert:
+Diese Liste wurde per paarweisem Vergleich im Vergleich zur Referenz-App (_Wispr Flow v2.8.3_) priorisiert:
 
 ## Priorisierte Roadmap
 
@@ -13,7 +13,7 @@ Diese Liste wurde per paarweisem Vergleich im Vergleich zur Referenz-App (*Wispr
 - [ ] **4. Live-Transkription (Streaming)**
   - Während der Aufnahme periodisch Zwischenstände transkribieren und wahlweise als Overlay-Vorschau oder direkt via `commitText(...)` / `deleteSurroundingText(...)` im Ziel-Feld aktualisieren.
 - [ ] **5. Stil- und Tonalitäts-Profile**
-  - Wählbare Modi für die Bereinigung (z. B. *Casual/Chat*, *Formal/E-Mail*, *Code/Prompt*, *Bullet Points*).
+  - Wählbare Modi für die Bereinigung (z. B. _Casual/Chat_, _Formal/E-Mail_, _Code/Prompt_, _Bullet Points_).
 - [ ] **6. Persönliches Wörterbuch (`dictionary_words`)**
   - Möglichkeit für den Nutzer, eigene Fachbegriffe, Eigennamen und Abkürzungen zu hinterlegen, damit Whisper und das LLM diese bevorzugt und korrekt schreiben.
 - [ ] **7. Haptisches Feedback**
