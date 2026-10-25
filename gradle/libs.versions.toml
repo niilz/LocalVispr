@@ -1,0 +1,37 @@
+[versions]
+agp = "9.2.1"
+# Kotlin newer than the AGP-bundled default: litertlm-android is compiled with
+# a recent Kotlin and its metadata cannot be read by older compilers.
+kotlin = "2.4.21"
+coroutines = "1.10.2"
+composeBom = "2025.09.00"
+activityCompose = "1.10.1"
+coreKtx = "1.16.0"
+lifecycle = "2.9.2"
+litertlm = "0.18.0"
+sherpaOnnx = "v1.13.5"
+junit = "4.13.2"
+spotless = "7.2.1"
+ktfmt = "0.59"
+
+[libraries]
+androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
+compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
+compose-material3 = { module = "androidx.compose.material3:material3" }
+compose-ui = { module = "androidx.compose.ui:ui" }
+compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
+compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
+litertlm-android = { module = "com.google.ai.edge.litertlm:litertlm-android", version.ref = "litertlm" }
+sherpa-onnx = { module = "com.github.k2-fsa:sherpa-onnx", version.ref = "sherpaOnnx" }
+junit = { module = "junit:junit", version.ref = "junit" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+# Only used to pin the Kotlin Gradle Plugin version for AGP's built-in Kotlin.
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
