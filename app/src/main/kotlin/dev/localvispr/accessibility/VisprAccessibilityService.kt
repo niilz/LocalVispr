@@ -65,7 +65,7 @@ class VisprAccessibilityService : AccessibilityService() {
 
         // Tier 1: direct InputConnection commit (API 33+ accessibility IME channel).
         val ic = inputMethod?.currentInputConnection
-        if (ic != null && runCatching { ic.commitText(formatted, 1) }.getOrDefault(false)) {
+        if (ic != null && runCatching { ic.commitText(formatted, 1, null) }.isSuccess) {
             return InsertionOutcome.COMMITTED_VIA_INPUT_CONNECTION
         }
 
