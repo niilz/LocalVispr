@@ -302,7 +302,7 @@ class FloatingBubbleService : Service() {
             )
         val notification =
             Notification.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_btn_speak_now)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
                 .setContentTitle(getString(R.string.app_name))
                 .setContentText(getString(R.string.notification_body))
                 .setContentIntent(openAppIntent)

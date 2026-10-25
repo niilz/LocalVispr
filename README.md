@@ -49,3 +49,8 @@ ShellCheck (WASM) run completely offline from Maven via npm packages:
 ./tools/dev/ktfmt.sh
 ./tools/dev/shellcheck.sh
 ```
+
+## License
+
+This project is licensed under the [Apache License, Version 2.0](LICENSE).
+

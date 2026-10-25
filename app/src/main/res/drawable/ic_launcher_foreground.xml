@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Outer soft neon-pink halo around the V -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z"
+        android:strokeColor="#66FF00A0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="7.2" />
+
+    <!-- Metallic chrome/cyan/violet body of the V with top-right serif -->
+    <path android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:endX="76"
+                android:endY="75"
+                android:startX="30"
+                android:startY="32"
+                android:type="linear">
+                <item
+                    android:color="#7CF7FF"
+                    android:offset="0.0" />
+                <item
+                    android:color="#E6F4FF"
+                    android:offset="0.28" />
+                <item
+                    android:color="#5B4B8A"
+                    android:offset="0.55" />
+                <item
+                    android:color="#1B102E"
+                    android:offset="0.78" />
+                <item
+                    android:color="#C026D3"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Specular steel ridge inside the V -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M36.2,37.6 L51.0,70.4 L64.2,37.6 L73.0,37.6"
+        android:strokeColor="#B3E0F7FF"
+        android:strokeLineCap="square"
+        android:strokeLineJoin="miter"
+        android:strokeWidth="1.8" />
+
+    <!-- Saturated neon-pink outer tube -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z"
+        android:strokeColor="#FF1E9A"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="3.2" />
+
+    <!-- Bright white-pink inner tube core -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z"
+        android:strokeColor="#FFD6F5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.2" />
+</vector>
