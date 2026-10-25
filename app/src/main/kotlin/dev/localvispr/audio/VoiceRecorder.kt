@@ -93,6 +93,14 @@ class VoiceRecorder {
         return true
     }
 
+    fun snapshotSamples(): FloatArray {
+        val raw = synchronized(pcmBytes) { pcmBytes.toByteArray() }
+        val shortCount = raw.size / 2
+        val shorts = ShortArray(shortCount)
+        ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN).asShortBuffer().get(shorts)
+        return PcmSamples.shortsToFloats(shorts)
+    }
+
     fun stopAndTakeSamples(): FloatArray {
         if (!recording.compareAndSet(true, false)) return FloatArray(0)
         worker?.join(1_500)
