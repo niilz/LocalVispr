@@ -137,10 +137,22 @@ class WaveformPillView(
         val h = height.toFloat()
         val w = width.toFloat()
         val cancelRadius = h * 0.38f
-        val cancelCx = cancelRadius + dpF(3f)
+        val cancelCx = w - cancelRadius - dpF(3f)
         val cancelCy = h / 2f
 
-        // 1. Left circular "✕" cancel button (matches BubblePOPOComposable's cancel icon).
+        // 1. Main equalizer pill container directly next to the V bubble (on the left),
+        // with the circular "✕" cancel button on the far right.
+        val pillLeft = dpF(3f)
+        val pillRight = cancelCx - cancelRadius - dpF(6f)
+        val pillTop = dpF(3f)
+        val pillBottom = h - dpF(3f)
+        val pillHeight = pillBottom - pillTop
+        val pillRadius = pillHeight / 2f
+        pillRect.set(pillLeft, pillTop, pillRight, pillBottom)
+        canvas.drawRoundRect(pillRect, pillRadius, pillRadius, housingPaint)
+        canvas.drawRoundRect(pillRect, pillRadius, pillRadius, borderPaint)
+
+        // 2. Right circular "✕" cancel button.
         canvas.drawCircle(cancelCx, cancelCy, cancelRadius, cancelDiscPaint)
         canvas.drawCircle(cancelCx, cancelCy, cancelRadius, borderPaint)
         val crossHalf = cancelRadius * 0.34f
@@ -158,16 +170,6 @@ class WaveformPillView(
             cancelCy + crossHalf,
             cancelCrossPaint,
         )
-
-        // 2. Main equalizer pill container to the right of the cancel button.
-        val pillLeft = cancelCx + cancelRadius + dpF(6f)
-        val pillTop = dpF(3f)
-        val pillBottom = h - dpF(3f)
-        val pillHeight = pillBottom - pillTop
-        val pillRadius = pillHeight / 2f
-        pillRect.set(pillLeft, pillTop, w - dpF(3f), pillBottom)
-        canvas.drawRoundRect(pillRect, pillRadius, pillRadius, housingPaint)
-        canvas.drawRoundRect(pillRect, pillRadius, pillRadius, borderPaint)
 
         // 3. Smooth the incoming speech level (same 0.15 smoothing factor as Constants.java).
         smoothedAudioLevel += (targetAudioLevel - smoothedAudioLevel) * SMOOTHING_FACTOR
@@ -227,8 +229,8 @@ class WaveformPillView(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_UP) {
-            val cancelBoundary = height * 0.9f
-            if (event.x <= cancelBoundary) {
+            val cancelBoundary = width - height * 0.9f
+            if (event.x >= cancelBoundary) {
                 onCancelTapped()
             } else {
                 onConfirmTapped()
