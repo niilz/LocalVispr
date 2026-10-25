@@ -5,7 +5,7 @@
 - [ ] **Live-Transkription & dynamische Text-Korrektur während des Sprechens**
   - **Variante A (Overlay-Vorschau):** Während der Aufnahme periodisch (~1–1,5 s) das bisherige Audio-Fenster transkribieren und den wachsenden Text zusammen mit einem Live-Mikrofonpegel direkt in/an der schwebenden Blase anzeigen; beim Stoppen den final geglätteten Text einfügen.
   - **Variante B (Live im Ziel-Textfeld mit Korrektur):** Zwischenstände sofort per `AccessibilityInputConnection.commitText(...)` ins fokussierte Eingabefeld schreiben und bei kontextbezogenen Korrekturen oder dem finalen LLM-Durchlauf das geänderte Suffix per `deleteSurroundingText(beforeLength, 0)` + `commitText(...)` ersetzen.
-- [ ] **Live-Audio-Pegel / Wellenform in der Blase**
+- [x] **Live-Audio-Pegel / Wellenform in der Blase**
   - Visuelles Feedback während `DictationState.LISTENING` (analog zu `DictationPhase.Dictating(audioLevel)` in der Referenz-App), damit man sofort sieht, ob das Mikrofon Signal bekommt.
 - [ ] **Optionale eigene Tastatur (`InputMethodService` / IME)**
   - Zweiter Auslöser neben der schwebenden Blase; ermöglicht außerdem natives `InputConnection.setComposingText(...)` (unterstrichener Live-Text während des Diktierens, der sich rückwirkend glätten lässt).
