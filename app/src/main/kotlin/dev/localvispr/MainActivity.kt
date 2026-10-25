@@ -35,6 +35,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -49,7 +50,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -62,6 +65,7 @@ import dev.localvispr.models.ModelCatalog
 import dev.localvispr.models.ModelSpec
 import dev.localvispr.service.FloatingBubbleService
 import dev.localvispr.settings.LanguagePreference
+import dev.localvispr.text.DictationStyle
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -209,13 +213,67 @@ private fun MainScreen(container: AppContainer) {
                             else "Schwebende Blase starten"
                         )
                     }
+
+                    // Switches for bubble behavior
+                    SettingSwitchRow(
+                        label = "Nur bei aktivem Textfeld zeigen",
+                        checked = settings.autoHideBubble,
+                        onCheckedChange = { container.settings.setAutoHideBubble(it) },
+                    )
+                    SettingSwitchRow(
+                        label = "Live-Text während des Sprechens",
+                        checked = settings.liveStreamingEnabled,
+                        onCheckedChange = { container.settings.setLiveStreamingEnabled(it) },
+                    )
+                    SettingSwitchRow(
+                        label = "Haptik",
+                        checked = settings.hapticsEnabled,
+                        onCheckedChange = { container.settings.setHapticsEnabled(it) },
+                    )
+                    SettingSwitchRow(
+                        label = "Shake-to-Dictate",
+                        checked = settings.shakeToDictateEnabled,
+                        onCheckedChange = { container.settings.setShakeToDictateEnabled(it) },
+                    )
+
+                    // Snooze buttons
+                    val isSnoozed = settings.snoozedUntilEpochMs > System.currentTimeMillis()
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        if (isSnoozed) {
+                            OutlinedButton(onClick = { container.settings.setSnoozedUntil(0L) }) {
+                                Text("Snooze aufheben", maxLines = 1, softWrap = false)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = {
+                                    container.settings.setSnoozedUntil(
+                                        System.currentTimeMillis() + 15 * 60 * 1000L
+                                    )
+                                }
+                            ) {
+                                Text("Snooze 15m", maxLines = 1, softWrap = false)
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    container.settings.setSnoozedUntil(
+                                        System.currentTimeMillis() + 60 * 60 * 1000L
+                                    )
+                                }
+                            ) {
+                                Text("Snooze 1h", maxLines = 1, softWrap = false)
+                            }
+                        }
+                    }
                 }
             }
 
-            // 2. Language selection (DE / EN / Auto)
+            // 2. Language & style selection
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("2. Diktat-Sprache", style = MaterialTheme.typography.titleMedium)
+                    Text("2. Diktat-Sprache & Stil", style = MaterialTheme.typography.titleMedium)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -225,6 +283,18 @@ private fun MainScreen(container: AppContainer) {
                                 selected = settings.languagePreference == pref,
                                 onClick = { container.settings.setLanguagePreference(pref) },
                                 label = { Text(pref.label, maxLines = 1, softWrap = false) },
+                            )
+                        }
+                    }
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        DictationStyle.entries.forEach { style ->
+                            FilterChip(
+                                selected = settings.dictationStyle == style,
+                                onClick = { container.settings.setDictationStyle(style) },
+                                label = { Text(style.label, maxLines = 1, softWrap = false) },
                             )
                         }
                     }
@@ -335,8 +405,101 @@ private fun MainScreen(container: AppContainer) {
                     }
                 }
             }
+
+            // 6. Dictation history
+            var historyQuery by remember { mutableStateOf("") }
+            val clipboardManager = LocalClipboardManager.current
+            val historyEntries =
+                remember(historyQuery, refreshTick, lastResult) {
+                    container.history.search(historyQuery)
+                }
+
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text("6. Diktat-Historie", style = MaterialTheme.typography.titleMedium)
+                        if (historyEntries.isNotEmpty() || historyQuery.isNotEmpty()) {
+                            TextButton(
+                                onClick = {
+                                    container.history.clear()
+                                    refreshTick++
+                                }
+                            ) {
+                                Text("Leeren", maxLines = 1, softWrap = false)
+                            }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = historyQuery,
+                        onValueChange = { historyQuery = it },
+                        label = { Text("Historie durchsuchen") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                    )
+                    if (historyEntries.isEmpty()) {
+                        Text(
+                            text =
+                                if (historyQuery.isEmpty()) "Noch keine Diktate gespeichert."
+                                else "Keine Treffer für die Suche.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        historyEntries.forEach { entry ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                                    Text(
+                                        text = entry.text,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                    if (entry.languageCode.isNotEmpty()) {
+                                        Text(
+                                            text = entry.languageCode.uppercase(),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        clipboardManager.setText(AnnotatedString(entry.text))
+                                    },
+                                    contentPadding =
+                                        PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                ) {
+                                    Text("Kopieren", maxLines = 1, softWrap = false)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun SettingSwitchRow(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f).padding(end = 12.dp),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
 
