@@ -143,21 +143,23 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
                 Shader.TileMode.CLAMP,
             )
 
-        // Heavy chrome-cyan-violet gradient inside the "V" body.
+        // Metallic body of the V: bright chrome-pink in the top half with a tight
+        // transition around the vertical midpoint into deep metallic purple below.
+        val vTop = s * 0.27f
+        val vBottom = s * 0.77f
         vBodyPaint.shader =
             LinearGradient(
                 0f,
-                s * 0.20f,
-                w.toFloat(),
-                s * 0.80f,
+                vTop,
+                0f,
+                vBottom,
                 intArrayOf(
-                    Color.parseColor("#7CF7FF"),
-                    Color.parseColor("#E6F4FF"),
-                    Color.parseColor("#5B4B8A"),
-                    Color.parseColor("#1B102E"),
-                    Color.parseColor("#C026D3"),
+                    Color.parseColor("#FF85D0"),
+                    Color.parseColor("#D946EF"),
+                    Color.parseColor("#6D28D9"),
+                    Color.parseColor("#2E1065"),
                 ),
-                floatArrayOf(0f, 0.28f, 0.55f, 0.78f, 1f),
+                floatArrayOf(0f, 0.44f, 0.56f, 1f),
                 Shader.TileMode.CLAMP,
             )
 
@@ -166,11 +168,16 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         vBevelPaint.shader =
             LinearGradient(
                 0f,
-                s * 0.22f,
+                vTop,
                 0f,
-                s * 0.78f,
-                Color.parseColor("#E0F7FF"),
-                Color.parseColor("#3B2854"),
+                vBottom,
+                intArrayOf(
+                    Color.parseColor("#FFE4F7"),
+                    Color.parseColor("#F0ABFC"),
+                    Color.parseColor("#A855F7"),
+                    Color.parseColor("#4C1D95"),
+                ),
+                floatArrayOf(0f, 0.44f, 0.56f, 1f),
                 Shader.TileMode.CLAMP,
             )
 
@@ -215,30 +222,60 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         val cx = width / 2f
         val cy = height / 2f
         val radius = s * 0.44f
+        val vTop = s * 0.27f
+        val vBottom = s * 0.77f
 
-        val (neonMain, neonCore, haloColor) =
+        // Top half: hot neon pink; bottom half: deep electric purple, separated by
+        // a tight transition band (0.43 .. 0.57) across the vertical middle of the V.
+        val (topTube, bottomTube, rimAccent) =
             when (state) {
                 DictationState.IDLE ->
                     Triple(
-                        Color.parseColor("#FF1E9A"), // hot neon pink tube
-                        Color.parseColor("#FFD6F5"), // bright white-pink tube core
-                        Color.parseColor("#CCFF00A0"),
+                        Color.parseColor("#FF1E9A"),
+                        Color.parseColor("#8B2CF5"),
+                        Color.parseColor("#CCFF1E9A"),
                     )
                 DictationState.LISTENING ->
                     Triple(
-                        Color.parseColor(
-                            "#FF0055"
-                        ), // intense electric crimson-pink while recording
-                        Color.parseColor("#FFF0F7"),
+                        Color.parseColor("#FF0066"),
+                        Color.parseColor("#A855F7"),
                         Color.parseColor("#FFFF0066"),
                     )
                 DictationState.PROCESSING ->
                     Triple(
-                        Color.parseColor("#FFB800"), // cyberpunk amber-gold while processing
-                        Color.parseColor("#FFF7D6"),
-                        Color.parseColor("#CCFF7A00"),
+                        Color.parseColor("#FFB800"),
+                        Color.parseColor("#9333EA"),
+                        Color.parseColor("#CCFFB800"),
                     )
             }
+        val (topCore, bottomCore) =
+            if (state == DictationState.PROCESSING) {
+                Color.parseColor("#FFF7D6") to Color.parseColor("#E9D5FF")
+            } else {
+                Color.parseColor("#FFD6F5") to Color.parseColor("#E9D5FF")
+            }
+
+        val splits = floatArrayOf(0f, 0.43f, 0.57f, 1f)
+        val tubeGradient =
+            LinearGradient(
+                0f,
+                vTop,
+                0f,
+                vBottom,
+                intArrayOf(topTube, topTube, bottomTube, bottomTube),
+                splits,
+                Shader.TileMode.CLAMP,
+            )
+        val coreGradient =
+            LinearGradient(
+                0f,
+                vTop,
+                0f,
+                vBottom,
+                intArrayOf(topCore, topCore, bottomCore, bottomCore),
+                splits,
+                Shader.TileMode.CLAMP,
+            )
 
         // 1. Dark metallic circular base + gunmetal rim.
         canvas.drawCircle(cx, cy, radius, discPaint)
@@ -247,25 +284,25 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         // Subtle neon reflection ring inside the metal bezel during active states.
         val boost = if (state == DictationState.IDLE) 0f else pulsePhase
         rimInnerPaint.strokeWidth = s * (0.018f + 0.012f * boost)
-        rimInnerPaint.color = haloColor
+        rimInnerPaint.color = rimAccent
         canvas.drawCircle(cx, cy, radius * 0.91f, rimInnerPaint)
 
         // 2. Solid metallic body of the V + specular chrome ridge.
         canvas.drawPath(vPath, vBodyPaint)
         canvas.drawPath(bevelHighlightPath, vBevelPaint)
 
-        // 3. Neon-pink tube wrapping the V (outer halo -> saturated tube -> hot core).
-        neonGlowPaint.color = haloColor
+        // 3. Two-tone neon tube wrapping the V (pink top -> short blend -> purple bottom).
+        neonGlowPaint.shader = tubeGradient
         neonGlowPaint.strokeWidth = s * (0.085f + 0.030f * boost)
         neonGlowPaint.maskFilter =
             BlurMaskFilter(s * (0.065f + 0.025f * boost), BlurMaskFilter.Blur.NORMAL)
         canvas.drawPath(vPath, neonGlowPaint)
 
-        neonTubePaint.color = neonMain
+        neonTubePaint.shader = tubeGradient
         neonTubePaint.strokeWidth = s * 0.036f
         canvas.drawPath(vPath, neonTubePaint)
 
-        neonCorePaint.color = neonCore
+        neonCorePaint.shader = coreGradient
         neonCorePaint.strokeWidth = s * 0.013f
         canvas.drawPath(vPath, neonCorePaint)
     }

@@ -6,38 +6,56 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Outer soft neon-pink halo around the V -->
+    <!-- Outer soft neon halo: pink in the upper half, purple in the lower half -->
     <path
         android:fillColor="#00000000"
         android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z"
-        android:strokeColor="#66FF00A0"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="7.2" />
+        android:strokeWidth="7.2">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:endX="54"
+                android:endY="74.4"
+                android:startX="54"
+                android:startY="34.4"
+                android:type="linear">
+                <item
+                    android:color="#66FF1E9A"
+                    android:offset="0.0" />
+                <item
+                    android:color="#66FF1E9A"
+                    android:offset="0.43" />
+                <item
+                    android:color="#668B2CF5"
+                    android:offset="0.57" />
+                <item
+                    android:color="#668B2CF5"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Metallic chrome/cyan/violet body of the V with top-right serif -->
+    <!-- Metallic body of the V: pink-chrome top half, tight transition, deep purple bottom -->
     <path android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:endX="76"
-                android:endY="75"
-                android:startX="30"
-                android:startY="32"
+                android:endX="54"
+                android:endY="74.4"
+                android:startX="54"
+                android:startY="34.4"
                 android:type="linear">
                 <item
-                    android:color="#7CF7FF"
+                    android:color="#FF85D0"
                     android:offset="0.0" />
                 <item
-                    android:color="#E6F4FF"
-                    android:offset="0.28" />
+                    android:color="#D946EF"
+                    android:offset="0.44" />
                 <item
-                    android:color="#5B4B8A"
-                    android:offset="0.55" />
+                    android:color="#6D28D9"
+                    android:offset="0.56" />
                 <item
-                    android:color="#1B102E"
-                    android:offset="0.78" />
-                <item
-                    android:color="#C026D3"
+                    android:color="#2E1065"
                     android:offset="1.0" />
             </gradient>
         </aapt:attr>
@@ -47,26 +65,68 @@
     <path
         android:fillColor="#00000000"
         android:pathData="M36.2,37.6 L51.0,70.4 L64.2,37.6 L73.0,37.6"
-        android:strokeColor="#B3E0F7FF"
+        android:strokeColor="#B3F5D0FE"
         android:strokeLineCap="square"
         android:strokeLineJoin="miter"
         android:strokeWidth="1.8" />
 
-    <!-- Saturated neon-pink outer tube -->
+    <!-- Two-tone neon tube: pink top -> tight transition -> purple bottom -->
     <path
         android:fillColor="#00000000"
         android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z"
-        android:strokeColor="#FF1E9A"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="3.2" />
+        android:strokeWidth="3.2">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:endX="54"
+                android:endY="74.4"
+                android:startX="54"
+                android:startY="34.4"
+                android:type="linear">
+                <item
+                    android:color="#FF1E9A"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FF1E9A"
+                    android:offset="0.43" />
+                <item
+                    android:color="#8B2CF5"
+                    android:offset="0.57" />
+                <item
+                    android:color="#8B2CF5"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 
-    <!-- Bright white-pink inner tube core -->
+    <!-- Bright inner tube core (white-pink top -> lavender bottom) -->
     <path
         android:fillColor="#00000000"
         android:pathData="M31.4,34.4 L43.4,34.4 L51.4,58.4 L60.2,34.4 L76.2,34.4 L74.6,41.6 L68.2,41.6 L54.6,74.4 L47.4,74.4 Z"
-        android:strokeColor="#FFD6F5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="1.2" />
+        android:strokeWidth="1.2">
+        <aapt:attr name="android:strokeColor">
+            <gradient
+                android:endX="54"
+                android:endY="74.4"
+                android:startX="54"
+                android:startY="34.4"
+                android:type="linear">
+                <item
+                    android:color="#FFD6F5"
+                    android:offset="0.0" />
+                <item
+                    android:color="#FFD6F5"
+                    android:offset="0.43" />
+                <item
+                    android:color="#E9D5FF"
+                    android:offset="0.57" />
+                <item
+                    android:color="#E9D5FF"
+                    android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
 </vector>
