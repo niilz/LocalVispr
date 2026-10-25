@@ -8,9 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.drawable.GradientDrawable
 import android.os.IBinder
 import android.provider.Settings
 import android.util.TypedValue
@@ -18,7 +16,6 @@ import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
-import android.widget.TextView
 import android.widget.Toast
 import dev.localvispr.AppContainer
 import dev.localvispr.MainActivity
@@ -56,7 +53,7 @@ class FloatingBubbleService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val recorder = VoiceRecorder()
     private var windowManager: WindowManager? = null
-    private var bubbleView: TextView? = null
+    private var bubbleView: CyberpunkVBubbleView? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -157,7 +154,7 @@ class FloatingBubbleService : Service() {
 
     private fun setState(next: DictationState) {
         _dictationState.value = next
-        bubbleView?.let(::styleBubble)
+        bubbleView?.setDictationState(next)
     }
 
     private fun attachBubble() {
@@ -180,33 +177,13 @@ class FloatingBubbleService : Service() {
                 }
 
         val view =
-            TextView(this).apply {
-                setTextColor(Color.WHITE)
-                setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
-                setPadding(dp(18), dp(12), dp(18), dp(12))
-                elevation = dp(6).toFloat()
+            CyberpunkVBubbleView(this).apply {
+                elevation = dp(8).toFloat()
+                setDictationState(_dictationState.value)
             }
-        styleBubble(view)
         installDragAndTapListener(view, params, wm)
         wm.addView(view, params)
         bubbleView = view
-    }
-
-    private fun styleBubble(view: TextView) {
-        val (labelRes, bgColor) =
-            when (_dictationState.value) {
-                DictationState.IDLE -> R.string.bubble_idle to Color.parseColor("#1E293B")
-                DictationState.LISTENING -> R.string.bubble_listening to Color.parseColor("#DC2626")
-                DictationState.PROCESSING ->
-                    R.string.bubble_processing to Color.parseColor("#D97706")
-            }
-        view.setText(labelRes)
-        view.background =
-            GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(24).toFloat()
-                setColor(bgColor)
-            }
     }
 
     private fun installDragAndTapListener(
