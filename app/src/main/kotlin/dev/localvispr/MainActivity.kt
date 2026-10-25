@@ -235,7 +235,7 @@ private fun MainScreen(container: AppContainer) {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "3. Spracherkennung (Sherpa-ONNX Whisper)",
+                        "3. Spracherkennung (Sherpa-ONNX)",
                         style = MaterialTheme.typography.titleMedium,
                     )
                     ModelCatalog.sttModels.forEach { spec ->
