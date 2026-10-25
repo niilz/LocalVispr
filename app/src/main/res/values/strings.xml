@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LocalVispr</string>
+    <string name="accessibility_service_label">LocalVispr Text-Einfügung</string>
+    <string name="accessibility_service_description">Schreibt den lokal transkribierten und bereinigten Diktat-Text direkt in das fokussierte Eingabefeld.</string>
+    <string name="bubble_idle">🎤 Diktat</string>
+    <string name="bubble_listening">⏹ Aufnahme…</string>
+    <string name="bubble_processing">⏳ Lokal…</string>
+    <string name="notification_channel_name">LocalVispr Schwebende Blase</string>
+    <string name="notification_body">Tippe auf die Blase, um lokal zu diktieren.</string>
+    <string name="notification_stop">Beenden</string>
+    <string name="toast_model_missing">Bitte zuerst das Sprachmodell in LocalVispr herunterladen.</string>
+    <string name="toast_mic_failed">Mikrofon konnte nicht gestartet werden.</string>
+</resources>
