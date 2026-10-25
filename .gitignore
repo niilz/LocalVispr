@@ -1,0 +1,15 @@
+# devcontainer stuff
+AGENTS.md
+.local
+
+# Project-local scratch space (decompiled reference APK, tool downloads, …)
+tmp/
+
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
