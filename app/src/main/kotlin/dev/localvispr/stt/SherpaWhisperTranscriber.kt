@@ -29,6 +29,7 @@ class SherpaWhisperTranscriber(private val repository: ModelRepository) {
         samples: FloatArray,
         spec: ModelSpec,
         fixedLanguage: Language?,
+        hotwords: String = "",
     ): TranscriptionResult {
         if (PcmSamples.isEffectivelySilent(samples)) {
             return TranscriptionResult("", fixedLanguage ?: Language.GERMAN)
@@ -36,7 +37,7 @@ class SherpaWhisperTranscriber(private val repository: ModelRepository) {
         // Empty string tells Whisper to auto-detect the spoken language.
         val langHint = fixedLanguage?.code.orEmpty()
         val rec = ensureRecognizer(spec, langHint)
-        val stream = rec.createStream()
+        val stream = if (hotwords.isNotBlank()) rec.createStream(hotwords) else rec.createStream()
         return try {
             stream.acceptWaveform(samples, PcmSamples.SAMPLE_RATE_HZ)
             rec.decode(stream)
