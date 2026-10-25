@@ -1,5 +1,6 @@
 package dev.localvispr.llm
 
+import android.os.Build
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
@@ -24,7 +25,9 @@ class LiteRtLlmEngine(private val repository: ModelRepository, private val cache
 
     @Synchronized
     fun clientFor(spec: ModelSpec?): LlmClient? {
-        if (spec == null || !repository.isInstalled(spec)) return null
+        // `liblitertlm_jni.so` emits ARMv8.2+ instructions (dotprod/i8mm) that
+        // trigger SIGILL on the Android QEMU emulator's baseline Cortex-A57 CPU.
+        if (isProbablyEmulator() || spec == null || !repository.isInstalled(spec)) return null
         val activeEngine = ensureEngine(spec)
         return LlmClient { systemPrompt, userMessage ->
             val config =
@@ -64,4 +67,10 @@ class LiteRtLlmEngine(private val repository: ModelRepository, private val cache
             loadedModelId = spec.id
         }
     }
+
+    private fun isProbablyEmulator(): Boolean =
+        Build.HARDWARE.contains("ranchu") ||
+            Build.HARDWARE.contains("goldfish") ||
+            Build.FINGERPRINT.startsWith("generic") ||
+            Build.MODEL.contains("sdk_gphone")
 }
