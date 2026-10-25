@@ -6,9 +6,11 @@ import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.LinearGradient
+import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RadialGradient
+import android.graphics.RectF
 import android.graphics.Shader
 import android.util.TypedValue
 import android.view.View
@@ -16,14 +18,13 @@ import android.view.animation.LinearInterpolator
 import kotlin.math.min
 
 // ==============================================================================
-// Circular cyberpunk "V" bubble view
+// Circular cyberpunk "V" bubble view (3D italic + speed trails)
 // ==============================================================================
 //
-// Renders a dark brushed-metal disc carrying a heavy chrome/cyan "V" with a
-// top-right serif, framed by a glowing neon-pink tube (inspired by 80s/cyberpunk
-// chrome lettering). Recording and processing states modulate the neon tube's
-// colour and pulse intensity so the bubble stays a compact round icon without
-// needing a text label.
+// Renders a dark brushed-metal disc carrying an italic-skewed, 3D-extruded
+// metallic "V" with a top-right serif, a slightly diagonal neon-pink-to-purple
+// gradient (with a tight midpoint transition), and high-speed motion trails
+// fading out to the left.
 
 class CyberpunkVBubbleView(context: Context) : View(context) {
 
@@ -45,6 +46,12 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
     private val discPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rimOuterPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val rimInnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val vExtrusionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val vExtrusionEdgePaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeJoin = Paint.Join.ROUND
+        }
     private val vBodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val vBevelPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -52,6 +59,7 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
             strokeJoin = Paint.Join.MITER
             strokeMiter = 6f
         }
+    private val speedTrailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val neonGlowPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
@@ -72,11 +80,12 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         }
 
     private val vPath = Path()
+    private val vExtrusionPath = Path()
     private val bevelHighlightPath = Path()
+    private val trailRect = RectF()
+    private val skewMatrix = Matrix()
 
     init {
-        // Software layer is required on older/emulated GPUs so BlurMaskFilter
-        // renders the outer neon halo reliably.
         setLayerType(LAYER_TYPE_SOFTWARE, null)
     }
 
@@ -110,7 +119,6 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         val cy = h / 2f
         val radius = s * 0.44f
 
-        // Deep obsidian/violet radial fill for the circular housing.
         discPaint.shader =
             RadialGradient(
                 cx - radius * 0.25f,
@@ -125,7 +133,6 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
                 Shader.TileMode.CLAMP,
             )
 
-        // Metallic gunmetal/chrome outer bezel.
         rimOuterPaint.strokeWidth = s * 0.045f
         rimOuterPaint.shader =
             LinearGradient(
@@ -143,76 +150,95 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
                 Shader.TileMode.CLAMP,
             )
 
-        // Metallic body of the V: bright chrome-pink in the top half with a tight
-        // transition around the vertical midpoint into deep metallic purple below.
-        val vTop = s * 0.27f
-        val vBottom = s * 0.77f
+        // 3D side-wall extrusion shader (dark metallic violet-indigo with cyan rim).
+        vExtrusionPaint.shader =
+            LinearGradient(
+                s * 0.25f,
+                s * 0.25f,
+                s * 0.75f,
+                s * 0.80f,
+                intArrayOf(
+                    Color.parseColor("#4C1D95"),
+                    Color.parseColor("#1E1038"),
+                    Color.parseColor("#0F0720"),
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        vExtrusionEdgePaint.strokeWidth = s * 0.016f
+        vExtrusionEdgePaint.color = Color.parseColor("#9938BDF8")
+
+        // Slightly diagonal gradient (top-left -> bottom-right) with a tight
+        // transition around the middle from neon pink (top) to purple (bottom).
+        val gx0 = s * 0.34f
+        val gy0 = s * 0.26f
+        val gx1 = s * 0.66f
+        val gy1 = s * 0.78f
         vBodyPaint.shader =
             LinearGradient(
-                0f,
-                vTop,
-                0f,
-                vBottom,
+                gx0,
+                gy0,
+                gx1,
+                gy1,
                 intArrayOf(
-                    Color.parseColor("#FF85D0"),
-                    Color.parseColor("#D946EF"),
-                    Color.parseColor("#6D28D9"),
+                    Color.parseColor("#FF94D8"),
+                    Color.parseColor("#EC4899"),
+                    Color.parseColor("#7C3AED"),
                     Color.parseColor("#2E1065"),
                 ),
-                floatArrayOf(0f, 0.44f, 0.56f, 1f),
+                floatArrayOf(0f, 0.43f, 0.57f, 1f),
                 Shader.TileMode.CLAMP,
             )
 
-        // Inner metallic bevel along the V edges so it reads as solid steel/chrome.
         vBevelPaint.strokeWidth = s * 0.022f
         vBevelPaint.shader =
             LinearGradient(
-                0f,
-                vTop,
-                0f,
-                vBottom,
+                gx0,
+                gy0,
+                gx1,
+                gy1,
                 intArrayOf(
-                    Color.parseColor("#FFE4F7"),
-                    Color.parseColor("#F0ABFC"),
+                    Color.parseColor("#FFE8F9"),
+                    Color.parseColor("#F472B6"),
                     Color.parseColor("#A855F7"),
                     Color.parseColor("#4C1D95"),
                 ),
-                floatArrayOf(0f, 0.44f, 0.56f, 1f),
+                floatArrayOf(0f, 0.43f, 0.57f, 1f),
                 Shader.TileMode.CLAMP,
             )
 
-        buildVGeometry(s)
+        buildItalic3DVGeometry(s)
     }
 
-    // Constructs a bold, slightly asymmetric "V" whose right arm carries a
-    // distinct top-right serif bar.
-    private fun buildVGeometry(s: Float) {
+    private fun buildItalic3DVGeometry(s: Float) {
         vPath.reset()
-        // Top-left outer corner of left arm
-        vPath.moveTo(s * 0.24f, s * 0.27f)
-        // Top-left inner corner of left arm
-        vPath.lineTo(s * 0.39f, s * 0.27f)
-        // Inner valley of the V
-        vPath.lineTo(s * 0.49f, s * 0.57f)
-        // Inner edge rising up to the right arm
-        vPath.lineTo(s * 0.60f, s * 0.27f)
-        // Top-right serif extending to the right
-        vPath.lineTo(s * 0.80f, s * 0.27f)
-        // Bottom-right corner of the top-right serif slab
-        vPath.lineTo(s * 0.78f, s * 0.36f)
-        // Step-in from the serif into the outer right arm
-        vPath.lineTo(s * 0.70f, s * 0.36f)
-        // Bottom apex of the V (chiselled flat tip for stability)
-        vPath.lineTo(s * 0.53f, s * 0.77f)
-        vPath.lineTo(s * 0.44f, s * 0.77f)
+        // Base V with top-right serif before italic forward skew.
+        vPath.moveTo(s * 0.28f, s * 0.27f)
+        vPath.lineTo(s * 0.43f, s * 0.27f)
+        vPath.lineTo(s * 0.51f, s * 0.57f)
+        vPath.lineTo(s * 0.62f, s * 0.27f)
+        vPath.lineTo(s * 0.82f, s * 0.27f)
+        vPath.lineTo(s * 0.80f, s * 0.36f)
+        vPath.lineTo(s * 0.72f, s * 0.36f)
+        vPath.lineTo(s * 0.55f, s * 0.76f)
+        vPath.lineTo(s * 0.45f, s * 0.76f)
         vPath.close()
 
-        // Specular metallic ridge running down the left arm and across the serif.
         bevelHighlightPath.reset()
-        bevelHighlightPath.moveTo(s * 0.30f, s * 0.31f)
-        bevelHighlightPath.lineTo(s * 0.485f, s * 0.72f)
-        bevelHighlightPath.lineTo(s * 0.65f, s * 0.31f)
-        bevelHighlightPath.lineTo(s * 0.76f, s * 0.31f)
+        bevelHighlightPath.moveTo(s * 0.34f, s * 0.31f)
+        bevelHighlightPath.lineTo(s * 0.50f, s * 0.71f)
+        bevelHighlightPath.lineTo(s * 0.66f, s * 0.31f)
+        bevelHighlightPath.lineTo(s * 0.77f, s * 0.31f)
+
+        // Apply forward italic shear (-0.19x) and mild perspective compression around the centre.
+        skewMatrix.reset()
+        skewMatrix.setSkew(-0.19f, -0.03f, s * 0.52f, s * 0.52f)
+        vPath.transform(skewMatrix)
+        bevelHighlightPath.transform(skewMatrix)
+
+        // 3D depth extrusion shifted down-right behind the front face.
+        vExtrusionPath.set(vPath)
+        vExtrusionPath.offset(s * 0.042f, s * 0.038f)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -222,11 +248,7 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         val cx = width / 2f
         val cy = height / 2f
         val radius = s * 0.44f
-        val vTop = s * 0.27f
-        val vBottom = s * 0.77f
 
-        // Top half: hot neon pink; bottom half: deep electric purple, separated by
-        // a tight transition band (0.43 .. 0.57) across the vertical middle of the V.
         val (topTube, bottomTube, rimAccent) =
             when (state) {
                 DictationState.IDLE ->
@@ -255,23 +277,28 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
                 Color.parseColor("#FFD6F5") to Color.parseColor("#E9D5FF")
             }
 
+        // Slightly diagonal axis (~28 degrees) with tight midpoint transition (0.43 .. 0.57).
+        val gx0 = s * 0.34f
+        val gy0 = s * 0.26f
+        val gx1 = s * 0.66f
+        val gy1 = s * 0.78f
         val splits = floatArrayOf(0f, 0.43f, 0.57f, 1f)
         val tubeGradient =
             LinearGradient(
-                0f,
-                vTop,
-                0f,
-                vBottom,
+                gx0,
+                gy0,
+                gx1,
+                gy1,
                 intArrayOf(topTube, topTube, bottomTube, bottomTube),
                 splits,
                 Shader.TileMode.CLAMP,
             )
         val coreGradient =
             LinearGradient(
-                0f,
-                vTop,
-                0f,
-                vBottom,
+                gx0,
+                gy0,
+                gx1,
+                gy1,
                 intArrayOf(topCore, topCore, bottomCore, bottomCore),
                 splits,
                 Shader.TileMode.CLAMP,
@@ -281,17 +308,46 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         canvas.drawCircle(cx, cy, radius, discPaint)
         canvas.drawCircle(cx, cy, radius, rimOuterPaint)
 
-        // Subtle neon reflection ring inside the metal bezel during active states.
         val boost = if (state == DictationState.IDLE) 0f else pulsePhase
         rimInnerPaint.strokeWidth = s * (0.018f + 0.012f * boost)
         rimInnerPaint.color = rimAccent
         canvas.drawCircle(cx, cy, radius * 0.91f, rimInnerPaint)
 
-        // 2. Solid metallic body of the V + specular chrome ridge.
+        // 2. High-speed motion streaks on the left, fading out to transparency towards the left.
+        drawSpeedStreak(
+            canvas,
+            left = s * 0.09f,
+            right = s * 0.33f,
+            centerY = s * 0.34f,
+            thickness = s * 0.026f,
+            solidColor = topTube,
+        )
+        drawSpeedStreak(
+            canvas,
+            left = s * 0.12f,
+            right = s * 0.37f,
+            centerY = s * 0.48f,
+            thickness = s * 0.020f,
+            solidColor = Color.parseColor("#E879F9"),
+        )
+        drawSpeedStreak(
+            canvas,
+            left = s * 0.16f,
+            right = s * 0.41f,
+            centerY = s * 0.62f,
+            thickness = s * 0.024f,
+            solidColor = bottomTube,
+        )
+
+        // 3. 3D extruded block behind the V.
+        canvas.drawPath(vExtrusionPath, vExtrusionPaint)
+        canvas.drawPath(vExtrusionPath, vExtrusionEdgePaint)
+
+        // 4. Front metallic V face + specular ridge.
         canvas.drawPath(vPath, vBodyPaint)
         canvas.drawPath(bevelHighlightPath, vBevelPaint)
 
-        // 3. Two-tone neon tube wrapping the V (pink top -> short blend -> purple bottom).
+        // 5. Diagonal two-tone neon tube wrapping the V.
         neonGlowPaint.shader = tubeGradient
         neonGlowPaint.strokeWidth = s * (0.085f + 0.030f * boost)
         neonGlowPaint.maskFilter =
@@ -305,6 +361,30 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         neonCorePaint.shader = coreGradient
         neonCorePaint.strokeWidth = s * 0.013f
         canvas.drawPath(vPath, neonCorePaint)
+    }
+
+    private fun drawSpeedStreak(
+        canvas: Canvas,
+        left: Float,
+        right: Float,
+        centerY: Float,
+        thickness: Float,
+        solidColor: Int,
+    ) {
+        val half = thickness / 2f
+        trailRect.set(left, centerY - half, right, centerY + half)
+        val transparent = solidColor and 0x00FFFFFF
+        speedTrailPaint.shader =
+            LinearGradient(
+                left,
+                centerY,
+                right,
+                centerY,
+                intArrayOf(transparent, solidColor, Color.WHITE),
+                floatArrayOf(0f, 0.78f, 1f),
+                Shader.TileMode.CLAMP,
+            )
+        canvas.drawRoundRect(trailRect, half, half, speedTrailPaint)
     }
 
     private fun dp(value: Int): Int =
