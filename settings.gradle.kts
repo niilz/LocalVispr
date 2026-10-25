@@ -11,8 +11,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // sherpa-onnx publishes its Android AAR (native libs + Kotlin API) only via JitPack.
-        maven("https://jitpack.io") { content { includeGroup("com.github.k2-fsa") } }
+        maven("https://jitpack.io")
     }
 }
 
