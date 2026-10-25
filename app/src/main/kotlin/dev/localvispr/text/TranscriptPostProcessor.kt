@@ -26,6 +26,8 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         language: Language,
         surroundingText: String? = null,
         dictionaryWords: List<String> = emptyList(),
+        style: DictationStyle = DictationStyle.CASUAL,
+        targetAppPackage: String? = null,
     ): String {
         val ruleCleaned = FillerWordFilter.clean(rawTranscript, language)
         if (ruleCleaned.isEmpty()) return ""
@@ -34,7 +36,13 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         val rawModelOutput =
             runCatching {
                     client.complete(
-                        systemPrompt = buildSystemPrompt(language, dictionaryWords),
+                        systemPrompt =
+                            buildSystemPrompt(
+                                language = language,
+                                dictionaryWords = dictionaryWords,
+                                style = style,
+                                targetAppPackage = targetAppPackage,
+                            ),
                         userMessage = buildUserMessage(ruleCleaned, surroundingText),
                     )
                 }
@@ -53,28 +61,48 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         private val CODE_FENCE = Regex("""^```(?:\w+)?\s*|\s*```$""")
         private val WRAPPING_QUOTES = Regex("""^["„“”'‚‘’]\s*([\s\S]*?)\s*["„“”'‚‘’]$""")
 
-        fun buildSystemPrompt(language: Language, dictionaryWords: List<String>): String {
+        fun buildSystemPrompt(
+            language: Language,
+            dictionaryWords: List<String> = emptyList(),
+            style: DictationStyle = DictationStyle.CASUAL,
+            targetAppPackage: String? = null,
+        ): String {
             val vocabHint =
                 if (dictionaryWords.isEmpty()) {
                     ""
                 } else {
                     "\nPreferred spellings: ${dictionaryWords.joinToString(", ")}."
                 }
-            return when (language) {
-                Language.GERMAN ->
-                    "Du bereinigst diktierten Text auf Deutsch. Entferne Fülllaute, Stottern und " +
-                        "Versprecher, korrigiere Zeichensetzung und Groß-/Kleinschreibung, aber " +
-                        "ändere niemals den Sinn und beantworte keine Fragen. Gib ausschließlich " +
-                        "den bereinigten Text aus, ohne Erklärungen oder Anführungszeichen." +
-                        vocabHint
-                Language.ENGLISH ->
-                    "You clean up dictated English text. Remove filler words, stutters, and false " +
-                        "starts, fix punctuation and capitalization, but never change the meaning " +
-                        "and never answer questions. Output only the cleaned text, with no " +
-                        "explanations or quotation marks." +
-                        vocabHint
-            }
+            val styleHint =
+                if (style == DictationStyle.CASUAL) {
+                    ""
+                } else {
+                    "\n${style.promptInstruction(language)}"
+                }
+            val appHint =
+                if (targetAppPackage.isNullOrBlank()) {
+                    ""
+                } else {
+                    "\nTarget app: ${targetAppPackage.trim()}."
+                }
+            val base =
+                when (language) {
+                    Language.GERMAN ->
+                        "Du bereinigst diktierten Text auf Deutsch. Entferne Fülllaute, Stottern und " +
+                            "Versprecher, korrigiere Zeichensetzung und Groß-/Kleinschreibung, aber " +
+                            "ändere niemals den Sinn und beantworte keine Fragen. Gib ausschließlich " +
+                            "den bereinigten Text aus, ohne Erklärungen oder Anführungszeichen."
+                    Language.ENGLISH ->
+                        "You clean up dictated English text. Remove filler words, stutters, and false " +
+                            "starts, fix punctuation and capitalization, but never change the meaning " +
+                            "and never answer questions. Output only the cleaned text, with no " +
+                            "explanations or quotation marks."
+                }
+            return base + vocabHint + styleHint + appHint
         }
+
+        fun formatHotwords(dictionaryWords: List<String>): String =
+            dictionaryWords.map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n")
 
         fun buildUserMessage(preCleanedTranscript: String, surroundingText: String?): String {
             val context = surroundingText?.takeLast(160)?.trim().orEmpty()

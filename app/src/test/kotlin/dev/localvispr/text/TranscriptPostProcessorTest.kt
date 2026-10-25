@@ -1,6 +1,7 @@
 package dev.localvispr.text
 
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import org.junit.Test
 
@@ -82,5 +83,119 @@ class TranscriptPostProcessorTest {
             ", Welt",
             TranscriptPostProcessor.formatForInsertion(", Welt", textBeforeCursor = "Hallo"),
         )
+    }
+
+    @Test
+    fun buildSystemPromptIncludesStyleInstructionsWhenNotCasual() {
+        val casualPrompt =
+            TranscriptPostProcessor.buildSystemPrompt(
+                language = Language.GERMAN,
+                style = DictationStyle.CASUAL,
+            )
+        assertFalse(casualPrompt.contains(DictationStyle.FORMAL.promptInstruction(Language.GERMAN)))
+
+        for (style in
+            listOf(
+                DictationStyle.FORMAL,
+                DictationStyle.CODE_PROMPT,
+                DictationStyle.BULLET_POINTS,
+            )) {
+            val dePrompt =
+                TranscriptPostProcessor.buildSystemPrompt(language = Language.GERMAN, style = style)
+            assertTrue(dePrompt.contains(style.promptInstruction(Language.GERMAN)))
+
+            val enPrompt =
+                TranscriptPostProcessor.buildSystemPrompt(
+                    language = Language.ENGLISH,
+                    style = style,
+                )
+            assertTrue(enPrompt.contains(style.promptInstruction(Language.ENGLISH)))
+        }
+    }
+
+    @Test
+    fun buildSystemPromptIncludesTargetAppPackageWhenPresent() {
+        val promptWithApp =
+            TranscriptPostProcessor.buildSystemPrompt(
+                language = Language.GERMAN,
+                targetAppPackage = "com.slack",
+            )
+        assertTrue(promptWithApp.contains("Target app: com.slack."))
+
+        val promptWithoutApp =
+            TranscriptPostProcessor.buildSystemPrompt(
+                language = Language.GERMAN,
+                targetAppPackage = null,
+            )
+        assertFalse(promptWithoutApp.contains("Target app:"))
+
+        val promptWithBlankApp =
+            TranscriptPostProcessor.buildSystemPrompt(
+                language = Language.GERMAN,
+                targetAppPackage = "   ",
+            )
+        assertFalse(promptWithBlankApp.contains("Target app:"))
+    }
+
+    @Test
+    fun processPassesStyleAndTargetAppToLlm() {
+        var capturedSystem = ""
+        val fakeLlm = LlmClient { system, _ ->
+            capturedSystem = system
+            "Formaler Text."
+        }
+        val processor = TranscriptPostProcessor(fakeLlm)
+
+        val out =
+            processor.process(
+                rawTranscript = "Ich brauche das Dokument.",
+                language = Language.GERMAN,
+                style = DictationStyle.FORMAL,
+                targetAppPackage = "com.microsoft.office.outlook",
+            )
+
+        assertEquals("Formaler Text.", out)
+        assertTrue(
+            capturedSystem.contains(DictationStyle.FORMAL.promptInstruction(Language.GERMAN))
+        )
+        assertTrue(capturedSystem.contains("Target app: com.microsoft.office.outlook."))
+    }
+
+    @Test
+    fun formatHotwordsTrimsAndIgnoresEmptyEntries() {
+        assertEquals("", TranscriptPostProcessor.formatHotwords(emptyList()))
+        assertEquals("", TranscriptPostProcessor.formatHotwords(listOf("", "   ", "\t")))
+        assertEquals(
+            "LocalVispr\nSherpa-ONNX\nWhisper",
+            TranscriptPostProcessor.formatHotwords(
+                listOf("  LocalVispr  ", "", "Sherpa-ONNX", "   ", "Whisper")
+            ),
+        )
+    }
+
+    @Test
+    fun dictationStyleLabelsAndInstructions() {
+        assertEquals("Locker / Chat", DictationStyle.CASUAL.label)
+        assertEquals("Formell / E-Mail", DictationStyle.FORMAL.label)
+        assertEquals("Code & Prompt", DictationStyle.CODE_PROMPT.label)
+        assertEquals("Stichpunkte", DictationStyle.BULLET_POINTS.label)
+
+        for (style in DictationStyle.entries) {
+            assertTrue(style.promptInstruction(Language.GERMAN).isNotBlank())
+            assertTrue(style.promptInstruction(Language.ENGLISH).isNotBlank())
+        }
+    }
+
+    @Test
+    fun editorContextHoldsCursorAndPackageInfo() {
+        val ctx =
+            EditorContext(
+                packageName = "org.telegram.messenger",
+                textBeforeCursor = "Hallo ",
+                textAfterCursor = "!",
+            )
+        assertEquals("org.telegram.messenger", ctx.packageName)
+        assertEquals("Hallo ", ctx.textBeforeCursor)
+        assertEquals("!", ctx.textAfterCursor)
     }
 }
