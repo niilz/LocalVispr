@@ -39,8 +39,8 @@ object ModelCatalog {
     val WHISPER_TINY =
         ModelSpec(
             id = "whisper-tiny",
-            title = "Vispr Tiny (int8, DE/EN)",
-            subtitle = "Schnellste Offline-Spracherkennung (~110 MB)",
+            title = "Whisper Tiny (int8, DE/EN)",
+            subtitle = "Fastest offline speech recognition (~110 MB)",
             kind = ModelKind.STT,
             approxSizeMb = 110,
             requiredFiles =
@@ -56,8 +56,8 @@ object ModelCatalog {
     val WHISPER_BASE =
         ModelSpec(
             id = "whisper-base",
-            title = "Vispr Base (int8, DE/EN)",
-            subtitle = "Höhere Genauigkeit (~195 MB)",
+            title = "Whisper Base (int8, DE/EN)",
+            subtitle = "Higher accuracy, slower on older phones (~195 MB)",
             kind = ModelKind.STT,
             approxSizeMb = 195,
             requiredFiles =
