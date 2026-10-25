@@ -23,8 +23,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            // TODO: enable R8 once keep rules for the JNI-backed sherpa-onnx and LiteRT-LM
-            // classes are verified.
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 
