@@ -98,15 +98,20 @@ class VisprInputMethodService : InputMethodService() {
             }
 
         val waveform =
-            WaveformPillView(this).apply {
-                setDictationState(dictationState)
-                layoutParams =
-                    LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT,
-                        )
-                        .apply { bottomMargin = dp(16) }
-            }
+            WaveformPillView(
+                    context = this,
+                    onCancelTapped = ::cancelDictation,
+                    onConfirmTapped = ::finishDictation,
+                )
+                .apply {
+                    setDictationState(dictationState)
+                    layoutParams =
+                        LinearLayout.LayoutParams(
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                                LinearLayout.LayoutParams.WRAP_CONTENT,
+                            )
+                            .apply { bottomMargin = dp(16) }
+                }
         waveformPillView = waveform
 
         val bubble =
@@ -163,6 +168,11 @@ class VisprInputMethodService : InputMethodService() {
         } else {
             Toast.makeText(this, R.string.toast_mic_failed, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun cancelDictation() {
+        recorder.cancel()
+        setState(DictationState.IDLE)
     }
 
     private fun finishDictation() {
