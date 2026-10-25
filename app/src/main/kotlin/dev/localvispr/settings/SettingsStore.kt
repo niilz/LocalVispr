@@ -3,6 +3,7 @@ package dev.localvispr.settings
 import android.content.Context
 import dev.localvispr.models.ModelCatalog
 import dev.localvispr.models.ModelSpec
+import dev.localvispr.text.DictationStyle
 import dev.localvispr.text.Language
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,12 @@ data class UserSettings(
     val llmModelId: String? = ModelCatalog.defaultLlm.id,
     val languagePreference: LanguagePreference = LanguagePreference.AUTO,
     val dictionaryWords: List<String> = emptyList(),
+    val dictationStyle: DictationStyle = DictationStyle.CASUAL,
+    val autoHideBubble: Boolean = false,
+    val liveStreamingEnabled: Boolean = true,
+    val shakeToDictateEnabled: Boolean = false,
+    val hapticsEnabled: Boolean = true,
+    val snoozedUntilEpochMs: Long = 0L,
 ) {
     val sttModel: ModelSpec
         get() = ModelCatalog.byId(sttModelId) ?: ModelCatalog.defaultStt
@@ -57,6 +64,36 @@ class SettingsStore(context: Context) {
         it.copy(dictionaryWords = words)
     }
 
+    fun setDictationStyle(style: DictationStyle) = update {
+        prefs.edit().putString(KEY_DICTATION_STYLE, style.name).apply()
+        it.copy(dictationStyle = style)
+    }
+
+    fun setAutoHideBubble(enabled: Boolean) = update {
+        prefs.edit().putBoolean(KEY_AUTO_HIDE_BUBBLE, enabled).apply()
+        it.copy(autoHideBubble = enabled)
+    }
+
+    fun setLiveStreamingEnabled(enabled: Boolean) = update {
+        prefs.edit().putBoolean(KEY_LIVE_STREAMING, enabled).apply()
+        it.copy(liveStreamingEnabled = enabled)
+    }
+
+    fun setShakeToDictateEnabled(enabled: Boolean) = update {
+        prefs.edit().putBoolean(KEY_SHAKE_TO_DICTATE, enabled).apply()
+        it.copy(shakeToDictateEnabled = enabled)
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) = update {
+        prefs.edit().putBoolean(KEY_HAPTICS, enabled).apply()
+        it.copy(hapticsEnabled = enabled)
+    }
+
+    fun setSnoozedUntil(epochMs: Long) = update {
+        prefs.edit().putLong(KEY_SNOOZED_UNTIL, epochMs).apply()
+        it.copy(snoozedUntilEpochMs = epochMs)
+    }
+
     private inline fun update(block: (UserSettings) -> UserSettings) {
         _state.value = block(_state.value)
     }
@@ -81,11 +118,26 @@ class SettingsStore(context: Context) {
                 .split(',')
                 .map(String::trim)
                 .filter(String::isNotEmpty)
+        val style =
+            prefs.getString(KEY_DICTATION_STYLE, null)?.let {
+                runCatching { DictationStyle.valueOf(it) }.getOrNull()
+            } ?: DictationStyle.CASUAL
+        val autoHide = prefs.getBoolean(KEY_AUTO_HIDE_BUBBLE, false)
+        val streaming = prefs.getBoolean(KEY_LIVE_STREAMING, true)
+        val shake = prefs.getBoolean(KEY_SHAKE_TO_DICTATE, false)
+        val haptics = prefs.getBoolean(KEY_HAPTICS, true)
+        val snoozed = prefs.getLong(KEY_SNOOZED_UNTIL, 0L)
         return UserSettings(
             sttModelId = stt,
             llmModelId = llm,
             languagePreference = lang,
             dictionaryWords = dict,
+            dictationStyle = style,
+            autoHideBubble = autoHide,
+            liveStreamingEnabled = streaming,
+            shakeToDictateEnabled = shake,
+            hapticsEnabled = haptics,
+            snoozedUntilEpochMs = snoozed,
         )
     }
 
@@ -94,6 +146,12 @@ class SettingsStore(context: Context) {
         const val KEY_LLM_MODEL = "llm_model"
         const val KEY_LANGUAGE = "language"
         const val KEY_DICTIONARY = "dictionary"
+        const val KEY_DICTATION_STYLE = "dictation_style"
+        const val KEY_AUTO_HIDE_BUBBLE = "auto_hide_bubble"
+        const val KEY_LIVE_STREAMING = "live_streaming"
+        const val KEY_SHAKE_TO_DICTATE = "shake_to_dictate"
+        const val KEY_HAPTICS = "haptics"
+        const val KEY_SNOOZED_UNTIL = "snoozed_until"
         const val NONE_SENTINEL = "__none__"
     }
 }

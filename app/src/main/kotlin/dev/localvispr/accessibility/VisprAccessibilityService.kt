@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import dev.localvispr.text.EditorContext
 import dev.localvispr.text.TranscriptPostProcessor
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +58,41 @@ class VisprAccessibilityService : AccessibilityService() {
             if (surrounding != null) return surrounding.text?.toString()
         }
         return findFocusedEditableNode()?.text?.toString()?.takeLast(maxChars)
+    }
+
+    fun readEditorContext(maxChars: Int = 200): EditorContext {
+        val pkg = rootInActiveWindow?.packageName?.toString()
+        val ic = inputMethod?.currentInputConnection
+        if (ic != null) {
+            val surrounding =
+                runCatching { ic.getSurroundingText(maxChars, maxChars, 0) }.getOrNull()
+            if (surrounding != null) {
+                val text = surrounding.text
+                val start = surrounding.selectionStart.coerceIn(0, text.length)
+                val end = surrounding.selectionEnd.coerceIn(start, text.length)
+                return EditorContext(
+                    packageName = pkg,
+                    textBeforeCursor = text.subSequence(0, start).toString(),
+                    textAfterCursor = text.subSequence(end, text.length).toString(),
+                )
+            }
+        }
+        val fallback = findFocusedEditableNode()?.text?.toString()?.takeLast(maxChars)
+        return EditorContext(packageName = pkg, textBeforeCursor = fallback, textAfterCursor = null)
+    }
+
+    fun applyStreamingDelta(deleteBeforeCursor: Int, textToCommit: String): Boolean {
+        val ic = inputMethod?.currentInputConnection ?: return false
+        return runCatching {
+                if (deleteBeforeCursor > 0) {
+                    ic.deleteSurroundingText(deleteBeforeCursor, 0)
+                }
+                if (textToCommit.isNotEmpty()) {
+                    ic.commitText(textToCommit, 1, null)
+                }
+                true
+            }
+            .getOrDefault(false)
     }
 
     fun insertText(cleanedText: String): InsertionOutcome {
