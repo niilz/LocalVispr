@@ -22,16 +22,26 @@ import dev.localvispr.AppContainer
 import dev.localvispr.MainActivity
 import dev.localvispr.R
 import dev.localvispr.accessibility.VisprAccessibilityService
+import dev.localvispr.audio.AudioRouteMonitor
 import dev.localvispr.audio.VoiceRecorder
+import dev.localvispr.sensors.ShakeDetector
+import dev.localvispr.settings.UserSettings
+import dev.localvispr.text.EditorContext
+import dev.localvispr.text.FillerWordFilter
+import dev.localvispr.text.LiveStreamingDiff
 import dev.localvispr.text.TranscriptPostProcessor
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -54,10 +64,19 @@ class FloatingBubbleService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val recorder = VoiceRecorder()
+    private val container by lazy { AppContainer.get(this) }
+    private val haptics by lazy { BubbleHaptics(this) }
+    private var audioRouteMonitor: AudioRouteMonitor? = null
+    private var shakeDetector: ShakeDetector? = null
+
     private var windowManager: WindowManager? = null
     private var rootContainer: LinearLayout? = null
     private var bubbleView: CyberpunkVBubbleView? = null
     private var waveformPillView: WaveformPillView? = null
+
+    private var liveStreamingJob: Job? = null
+    private var streamedSoFar: String = ""
+    private var initialEditorContext: EditorContext? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -71,6 +90,31 @@ class FloatingBubbleService : Service() {
         scope.launch {
             recorder.audioLevel.collect { level -> waveformPillView?.setAudioLevel(level) }
         }
+
+        audioRouteMonitor = AudioRouteMonitor(this).apply { start() }
+
+        shakeDetector = ShakeDetector(this) { onBubbleTapped() }
+        scope.launch {
+            container.settings.state.collect { settings ->
+                if (settings.shakeToDictateEnabled) {
+                    shakeDetector?.start()
+                } else {
+                    shakeDetector?.stop()
+                }
+            }
+        }
+
+        scope.launch {
+            combine(
+                    VisprAccessibilityService.hasEditableFocus,
+                    _dictationState,
+                    container.settings.state,
+                ) { _, _, _ ->
+                    Unit
+                }
+                .collect { updateBubbleVisibility() }
+        }
+
         _running.value = true
     }
 
@@ -85,13 +129,37 @@ class FloatingBubbleService : Service() {
     override fun onDestroy() {
         _running.value = false
         _dictationState.value = DictationState.IDLE
+        liveStreamingJob?.cancel()
+        liveStreamingJob = null
+        if (streamedSoFar.isNotEmpty()) {
+            VisprAccessibilityService.instance.value?.applyStreamingDelta(streamedSoFar.length, "")
+            streamedSoFar = ""
+        }
+        initialEditorContext = null
         if (recorder.isRecording) recorder.cancel()
+        shakeDetector?.stop()
+        shakeDetector = null
+        audioRouteMonitor?.stop()
+        audioRouteMonitor = null
         rootContainer?.let { runCatching { windowManager?.removeView(it) } }
         rootContainer = null
         bubbleView = null
         waveformPillView = null
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun updateBubbleVisibility() {
+        val settings = container.settings.state.value
+        val show =
+            BubbleVisibilityPolicy.shouldShowBubble(
+                autoHideOnNoFocus = settings.autoHideBubble,
+                hasEditableFocus = VisprAccessibilityService.hasEditableFocus.value,
+                isDictatingOrProcessing = _dictationState.value != DictationState.IDLE,
+                snoozedUntilEpochMs = settings.snoozedUntilEpochMs,
+                nowEpochMs = System.currentTimeMillis(),
+            )
+        rootContainer?.visibility = if (show) View.VISIBLE else View.GONE
     }
 
     private fun onBubbleTapped() {
@@ -103,8 +171,8 @@ class FloatingBubbleService : Service() {
     }
 
     private fun startDictation() {
-        val container = AppContainer.get(this)
-        val sttSpec = container.settings.state.value.sttModel
+        val settings = container.settings.state.value
+        val sttSpec = settings.sttModel
         if (!container.models.isInstalled(sttSpec)) {
             Toast.makeText(this, R.string.toast_model_missing, Toast.LENGTH_LONG).show()
             startActivity(
@@ -112,38 +180,124 @@ class FloatingBubbleService : Service() {
             )
             return
         }
+        streamedSoFar = ""
+        initialEditorContext = VisprAccessibilityService.instance.value?.readEditorContext()
         if (recorder.start()) {
             setState(DictationState.LISTENING)
+            if (settings.hapticsEnabled) {
+                haptics.onStartRecording()
+            }
+            if (settings.liveStreamingEnabled) {
+                startLiveStreaming(settings)
+            }
         } else {
             Toast.makeText(this, R.string.toast_mic_failed, Toast.LENGTH_SHORT).show()
         }
     }
 
+    private fun startLiveStreaming(settings: UserSettings) {
+        liveStreamingJob?.cancel()
+        liveStreamingJob =
+            scope.launch {
+                val hotwords = TranscriptPostProcessor.formatHotwords(settings.dictionaryWords)
+                val initialBefore = initialEditorContext?.textBeforeCursor
+                while (isActive && _dictationState.value == DictationState.LISTENING) {
+                    delay(1200L)
+                    if (!isActive || _dictationState.value != DictationState.LISTENING) break
+
+                    val snapshot = recorder.snapshotSamples()
+                    if (snapshot.isEmpty()) continue
+
+                    val candidate =
+                        withContext(Dispatchers.Default) {
+                            val transcription =
+                                container.transcriber.transcribe(
+                                    samples = snapshot,
+                                    spec = settings.sttModel,
+                                    fixedLanguage = settings.languagePreference.fixedLanguage,
+                                    hotwords = hotwords,
+                                )
+                            if (transcription.rawText.isBlank()) {
+                                ""
+                            } else {
+                                FillerWordFilter.clean(
+                                    transcription.rawText,
+                                    transcription.detectedLanguage,
+                                )
+                            }
+                        }
+
+                    if (!isActive || _dictationState.value != DictationState.LISTENING) break
+
+                    if (candidate.isNotEmpty()) {
+                        val formattedCandidate =
+                            TranscriptPostProcessor.formatForInsertion(candidate, initialBefore)
+                        val delta =
+                            LiveStreamingDiff.computeDelta(streamedSoFar, formattedCandidate)
+                        if (delta.deleteBeforeCursor > 0 || delta.textToCommit.isNotEmpty()) {
+                            val service = VisprAccessibilityService.instance.value
+                            if (
+                                service?.applyStreamingDelta(
+                                    delta.deleteBeforeCursor,
+                                    delta.textToCommit,
+                                ) == true
+                            ) {
+                                streamedSoFar = formattedCandidate
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
     private fun cancelDictation() {
+        liveStreamingJob?.cancel()
+        liveStreamingJob = null
+        if (streamedSoFar.isNotEmpty()) {
+            VisprAccessibilityService.instance.value?.applyStreamingDelta(streamedSoFar.length, "")
+            streamedSoFar = ""
+        }
+        initialEditorContext = null
         recorder.cancel()
+        val settings = container.settings.state.value
+        if (settings.hapticsEnabled) {
+            haptics.onCancelled()
+        }
         setState(DictationState.IDLE)
     }
 
     private fun finishDictation() {
         if (_dictationState.value != DictationState.LISTENING) return
+        liveStreamingJob?.cancel()
+        liveStreamingJob = null
         setState(DictationState.PROCESSING)
-        val container = AppContainer.get(this)
         val settings = container.settings.state.value
-        val surrounding = VisprAccessibilityService.instance.value?.readTextBeforeCursor()
+        if (settings.hapticsEnabled) {
+            haptics.onStopRecording()
+        }
+        val editorContext =
+            initialEditorContext ?: VisprAccessibilityService.instance.value?.readEditorContext()
+        val surrounding = editorContext?.textBeforeCursor
+        val targetApp = editorContext?.packageName
 
         scope.launch {
-            val cleaned =
+            val samples = recorder.stopAndTakeSamples()
+            val hotwords = TranscriptPostProcessor.formatHotwords(settings.dictionaryWords)
+            val transcription =
                 withContext(Dispatchers.Default) {
-                    val samples = recorder.stopAndTakeSamples()
-                    val transcription =
-                        container.transcriber.transcribe(
-                            samples = samples,
-                            spec = settings.sttModel,
-                            fixedLanguage = settings.languagePreference.fixedLanguage,
-                        )
-                    if (transcription.rawText.isBlank()) {
-                        ""
-                    } else {
+                    container.transcriber.transcribe(
+                        samples = samples,
+                        spec = settings.sttModel,
+                        fixedLanguage = settings.languagePreference.fixedLanguage,
+                        hotwords = hotwords,
+                    )
+                }
+
+            val cleaned =
+                if (transcription.rawText.isBlank()) {
+                    ""
+                } else {
+                    withContext(Dispatchers.Default) {
                         val llmClient = container.llmEngine.clientFor(settings.llmModel)
                         TranscriptPostProcessor(llmClient)
                             .process(
@@ -151,20 +305,47 @@ class FloatingBubbleService : Service() {
                                 language = transcription.detectedLanguage,
                                 surroundingText = surrounding,
                                 dictionaryWords = settings.dictionaryWords,
+                                style = settings.dictationStyle,
+                                targetAppPackage = targetApp,
                             )
                     }
                 }
 
             setState(DictationState.IDLE)
-            if (cleaned.isNotEmpty()) {
-                _lastResult.value = cleaned
-                val service = VisprAccessibilityService.instance.value
+
+            val service = VisprAccessibilityService.instance.value
+            val finalFormatted =
+                if (cleaned.isNotEmpty()) {
+                    TranscriptPostProcessor.formatForInsertion(cleaned, surrounding)
+                } else {
+                    ""
+                }
+
+            if (streamedSoFar.isNotEmpty()) {
+                val delta = LiveStreamingDiff.computeDelta(streamedSoFar, finalFormatted)
+                if (service != null) {
+                    service.applyStreamingDelta(delta.deleteBeforeCursor, delta.textToCommit)
+                } else if (cleaned.isNotEmpty()) {
+                    Toast.makeText(this@FloatingBubbleService, cleaned, Toast.LENGTH_LONG).show()
+                }
+            } else if (cleaned.isNotEmpty()) {
                 if (service != null) {
                     service.insertText(cleaned)
                 } else {
                     Toast.makeText(this@FloatingBubbleService, cleaned, Toast.LENGTH_LONG).show()
                 }
             }
+
+            if (cleaned.isNotEmpty()) {
+                _lastResult.value = cleaned
+                container.history.record(cleaned, transcription.detectedLanguage.code)
+                if (settings.hapticsEnabled) {
+                    haptics.onInserted()
+                }
+            }
+
+            streamedSoFar = ""
+            initialEditorContext = null
         }
     }
 
@@ -172,6 +353,7 @@ class FloatingBubbleService : Service() {
         _dictationState.value = next
         bubbleView?.setDictationState(next)
         waveformPillView?.setDictationState(next)
+        updateBubbleVisibility()
     }
 
     private fun attachBubble() {
@@ -229,6 +411,7 @@ class FloatingBubbleService : Service() {
         rootContainer = container
         bubbleView = vBubble
         waveformPillView = pill
+        updateBubbleVisibility()
     }
 
     private fun installDragAndTapListener(
