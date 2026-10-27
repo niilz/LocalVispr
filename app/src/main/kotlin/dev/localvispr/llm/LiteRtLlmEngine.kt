@@ -2,6 +2,7 @@ package dev.localvispr.llm
 
 import android.os.Build
 import com.google.ai.edge.litertlm.Backend
+import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Contents
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Engine
@@ -37,7 +38,17 @@ class LiteRtLlmEngine(private val repository: ModelRepository, private val cache
                     samplerConfig = SamplerConfig(topK = 20, topP = 0.9, temperature = 0.2),
                 )
             activeEngine.createConversation(config).use { conversation ->
-                conversation.sendMessage(userMessage).toString()
+                val response = conversation.sendMessage(userMessage)
+                val extracted =
+                    response.contents.contents
+                        .filterIsInstance<Content.Text>()
+                        .joinToString("") { it.text }
+                        .trim()
+                if (extracted.isNotEmpty()) {
+                    extracted
+                } else {
+                    response.toString()
+                }
             }
         }
     }

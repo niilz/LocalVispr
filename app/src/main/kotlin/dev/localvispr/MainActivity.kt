@@ -172,10 +172,7 @@ private fun MainScreen(container: AppContainer, onRestartOnboarding: () -> Unit 
     }
 
     var scratchPad by remember { mutableStateOf("") }
-    var dictInput by
-        remember(settings.dictionaryWords) {
-            mutableStateOf(settings.dictionaryWords.joinToString(", "))
-        }
+    var dictInput by remember { mutableStateOf(settings.dictionaryWords.joinToString(", ")) }
 
     Scaffold(topBar = { TopAppBar(title = { Text("LocalVispr") }) }) { padding ->
         Column(

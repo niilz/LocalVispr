@@ -353,16 +353,26 @@ class FloatingBubbleService : Service() {
                 } else {
                     withContext(Dispatchers.Default) {
                         val activeStyle = settings.styleForPackage(targetApp)
+                        android.util.Log.d(
+                            "LocalVispr",
+                            "Dictation finish: targetApp='$targetApp' category='${dev.localvispr.text.StyleCategory.categoryForPackage(targetApp)}' style='$activeStyle' dictWords=${settings.dictionaryWords}",
+                        )
                         val llmClient = container.llmEngine.clientFor(settings.llmModel)
-                        TranscriptPostProcessor(llmClient)
-                            .process(
-                                rawTranscript = transcription.rawText,
-                                language = transcription.detectedLanguage,
-                                surroundingText = surrounding,
-                                dictionaryWords = settings.dictionaryWords,
-                                style = activeStyle,
-                                targetAppPackage = targetApp,
-                            )
+                        val result =
+                            TranscriptPostProcessor(llmClient)
+                                .process(
+                                    rawTranscript = transcription.rawText,
+                                    language = transcription.detectedLanguage,
+                                    surroundingText = surrounding,
+                                    dictionaryWords = settings.dictionaryWords,
+                                    style = activeStyle,
+                                    targetAppPackage = targetApp,
+                                )
+                        android.util.Log.d(
+                            "LocalVispr",
+                            "Processed output: raw='${transcription.rawText}' -> result='$result'",
+                        )
+                        result
                     }
                 }
 

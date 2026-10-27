@@ -72,7 +72,7 @@ class SettingsStore(context: Context) {
 
     fun setDictionaryWords(rawCsv: String) = update {
         val words = rawCsv.split(',', '\n').map(String::trim).filter(String::isNotEmpty)
-        prefs.edit().putString(KEY_DICTIONARY, words.joinToString(",")).apply()
+        prefs.edit().putString(KEY_DICTIONARY, rawCsv).apply()
         it.copy(dictionaryWords = words)
     }
 
