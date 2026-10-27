@@ -183,5 +183,16 @@ class VisprAccessibilityService : AccessibilityService() {
 
         private val _hasEditableFocus = MutableStateFlow(false)
         val hasEditableFocus: StateFlow<Boolean> = _hasEditableFocus.asStateFlow()
+
+        fun isEnabled(context: android.content.Context): Boolean {
+            if (_instance.value != null) return true
+            val expected = "${context.packageName}/${VisprAccessibilityService::class.java.name}"
+            val enabledServices =
+                android.provider.Settings.Secure.getString(
+                    context.contentResolver,
+                    android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
+                ) ?: return false
+            return enabledServices.split(':').any { it.equals(expected, ignoreCase = true) }
+        }
     }
 }
