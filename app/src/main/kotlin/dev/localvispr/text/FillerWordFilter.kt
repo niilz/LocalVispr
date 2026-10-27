@@ -46,8 +46,13 @@ object FillerWordFilter {
     private val MULTI_SPACE = Regex("""\s{2,}""")
     private val SENTENCE_START = Regex("""(?:^|(?<=[.!?]\s))(\p{Ll})""")
 
-    fun clean(raw: String, language: Language): String {
-        val normalizedPunct = SpokenPunctuationNormalizer.normalize(raw, language)
+    fun clean(
+        raw: String,
+        language: Language,
+        replacements: Map<String, String> = emptyMap(),
+    ): String {
+        val withReplacements = DictionaryReplacements.apply(raw, replacements)
+        val normalizedPunct = SpokenPunctuationNormalizer.normalize(withReplacements, language)
         val fillers = fillersPattern(language)
         var text = NON_SPEECH_TAG.replace(normalizedPunct, " ")
 

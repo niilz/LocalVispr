@@ -467,7 +467,12 @@ private fun MainScreen(container: AppContainer, onRestartOnboarding: () -> Unit 
                             dictInput = it
                             container.settings.setDictionaryWords(it)
                         },
-                        label = { Text("Eigene Begriffe (Komma-getrennt)") },
+                        label = { Text("Wörterbuch & Ersetzungen (Komma-getrennt)") },
+                        supportingText = {
+                            Text(
+                                "Begriffe (z.B. LocalVispr) oder Ersetzungen (z.B. Steffi -> Stephie, mfg = Mit freundlichen Grüßen)"
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                     )
                     OutlinedTextField(

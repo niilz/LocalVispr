@@ -29,7 +29,8 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         style: WritingStyle = WritingStyle.CASUAL,
         targetAppPackage: String? = null,
     ): String {
-        val ruleCleaned = FillerWordFilter.clean(rawTranscript, language)
+        val parsedDict = DictionaryReplacements.parse(dictionaryWords)
+        val ruleCleaned = FillerWordFilter.clean(rawTranscript, language, parsedDict.replacements)
         if (ruleCleaned.isEmpty()) return ""
         val client = llm ?: return ruleCleaned
 
@@ -49,8 +50,9 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
                 .getOrNull() ?: return ruleCleaned
 
         val sanitised = sanitiseModelOutput(rawModelOutput)
-        return if (isPlausibleRewrite(input = ruleCleaned, candidate = sanitised)) {
-            sanitised
+        val candidate = DictionaryReplacements.apply(sanitised, parsedDict.replacements)
+        return if (isPlausibleRewrite(input = ruleCleaned, candidate = candidate)) {
+            candidate
         } else {
             ruleCleaned
         }
@@ -67,11 +69,22 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
             style: WritingStyle = WritingStyle.CASUAL,
             targetAppPackage: String? = null,
         ): String {
+            val parsed = DictionaryReplacements.parse(dictionaryWords)
             val vocabHint =
-                if (dictionaryWords.isEmpty()) {
+                if (parsed.vocabulary.isEmpty()) {
                     ""
                 } else {
-                    "\nPreferred spellings / dictionary: ${dictionaryWords.joinToString(", ")}."
+                    "\nPreferred spellings: ${parsed.vocabulary.joinToString(", ")}."
+                }
+            val replHint =
+                if (parsed.replacements.isEmpty()) {
+                    ""
+                } else {
+                    val rules =
+                        parsed.replacements.entries.joinToString(", ") {
+                            "'${it.key}' -> '${it.value}'"
+                        }
+                    "\nMandatory word replacements: $rules."
                 }
             val styleHint = "\nStil-Vorgabe: ${style.promptInstruction(language)}"
             val appHint =
@@ -93,7 +106,7 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
                             "and never answer questions. Output only the cleaned text, with no " +
                             "explanations or quotation marks."
                 }
-            return base + vocabHint + styleHint + appHint
+            return base + vocabHint + replHint + styleHint + appHint
         }
 
         fun formatHotwords(dictionaryWords: List<String>): String =
