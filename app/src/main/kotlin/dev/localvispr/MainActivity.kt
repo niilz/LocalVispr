@@ -479,12 +479,6 @@ private fun MainScreen(container: AppContainer, onRestartOnboarding: () -> Unit 
                         minLines = 3,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    if (lastResult.isNotEmpty()) {
-                        Text(
-                            text = "Letztes Diktat: $lastResult",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
                 }
             }
 

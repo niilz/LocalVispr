@@ -87,6 +87,30 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
                     "\nMandatory word replacements: $rules."
                 }
             val styleHint = "\nStil-Vorgabe: ${style.promptInstruction(language)}"
+            val emailGuidance =
+                if (
+                    style == WritingStyle.FORMAL ||
+                        StyleCategory.categoryForPackage(targetAppPackage) == StyleCategory.EMAIL
+                ) {
+                    when (language) {
+                        Language.GERMAN ->
+                            "\n\nWICHTIG für E-Mails: Gliedere den Text immer mit echten Absätzen (Leerzeilen)!\n" +
+                                "Beispiel:\n" +
+                                "Hi Name,\n\n" +
+                                "vielen Dank für das nette Meeting. Ich freue mich auf das nächste.\n\n" +
+                                "Viele Grüße\n" +
+                                "Nils"
+                        Language.ENGLISH ->
+                            "\n\nIMPORTANT for emails: Always structure the message with clean blank lines between paragraphs, after greetings, and before sign-offs!\n" +
+                                "Example:\n" +
+                                "Hi Name,\n\n" +
+                                "thanks for the meeting. Looking forward to the next one.\n\n" +
+                                "Best regards\n" +
+                                "Nils"
+                    }
+                } else {
+                    ""
+                }
             val appHint =
                 if (targetAppPackage.isNullOrBlank()) {
                     ""
@@ -106,7 +130,7 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
                             "and never answer questions. Output only the cleaned text, with no " +
                             "explanations or quotation marks."
                 }
-            return base + vocabHint + replHint + styleHint + appHint
+            return base + vocabHint + replHint + styleHint + emailGuidance + appHint
         }
 
         fun formatHotwords(dictionaryWords: List<String>): String =
