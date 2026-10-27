@@ -66,7 +66,8 @@ import dev.localvispr.models.ModelSpec
 import dev.localvispr.onboarding.OnboardingScreen
 import dev.localvispr.service.FloatingBubbleService
 import dev.localvispr.settings.LanguagePreference
-import dev.localvispr.text.DictationStyle
+import dev.localvispr.text.StyleCategory
+import dev.localvispr.text.WritingStyle
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -285,10 +286,10 @@ private fun MainScreen(container: AppContainer, onRestartOnboarding: () -> Unit 
                 }
             }
 
-            // 2. Language & style selection
+            // 2. Language & context-based styles (modelled after Wispr Flow)
             Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("2. Diktat-Sprache & Stil", style = MaterialTheme.typography.titleMedium)
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("2. Diktat-Sprache", style = MaterialTheme.typography.titleMedium)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -301,16 +302,80 @@ private fun MainScreen(container: AppContainer, onRestartOnboarding: () -> Unit 
                             )
                         }
                     }
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Kontextbezogene Stile (je nach aktiver App)",
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        "LocalVispr passt den Tonfall automatisch an die geöffnete App an.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+
+                    var selectedCategory by remember { mutableStateOf(StyleCategory.PERSONAL) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        DictationStyle.entries.forEach { style ->
+                        StyleCategory.entries.forEach { cat ->
                             FilterChip(
-                                selected = settings.dictationStyle == style,
-                                onClick = { container.settings.setDictationStyle(style) },
-                                label = { Text(style.label, maxLines = 1, softWrap = false) },
+                                selected = selectedCategory == cat,
+                                onClick = { selectedCategory = cat },
+                                label = { Text(cat.tabLabel, maxLines = 1, softWrap = false) },
+                                modifier = Modifier.weight(1f),
                             )
+                        }
+                    }
+
+                    // Card with category explanation & sample apps
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors =
+                            androidx.compose.material3.CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                    ) {
+                        Column(
+                            Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                selectedCategory.description,
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                "Apps: ${selectedCategory.sampleApps}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+
+                    // Style options for this category
+                    val currentStyleForCategory =
+                        when (selectedCategory) {
+                            StyleCategory.PERSONAL -> settings.personalStyle
+                            StyleCategory.WORK -> settings.workStyle
+                            StyleCategory.EMAIL -> settings.emailStyle
+                            StyleCategory.OTHER -> settings.otherStyle
+                        }
+
+                    WritingStyle.entries.forEach { style ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = currentStyleForCategory == style,
+                                onClick = {
+                                    container.settings.setCategoryStyle(selectedCategory, style)
+                                },
+                            )
+                            Column(Modifier.padding(start = 4.dp)) {
+                                Text(style.displayName, style = MaterialTheme.typography.bodyLarge)
+                                Text(style.subtitle, style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                 }

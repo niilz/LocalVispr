@@ -352,6 +352,7 @@ class FloatingBubbleService : Service() {
                     ""
                 } else {
                     withContext(Dispatchers.Default) {
+                        val activeStyle = settings.styleForPackage(targetApp)
                         val llmClient = container.llmEngine.clientFor(settings.llmModel)
                         TranscriptPostProcessor(llmClient)
                             .process(
@@ -359,7 +360,7 @@ class FloatingBubbleService : Service() {
                                 language = transcription.detectedLanguage,
                                 surroundingText = surrounding,
                                 dictionaryWords = settings.dictionaryWords,
-                                style = settings.dictationStyle,
+                                style = activeStyle,
                                 targetAppPackage = targetApp,
                             )
                     }

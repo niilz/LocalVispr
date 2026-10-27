@@ -86,20 +86,8 @@ class TranscriptPostProcessorTest {
     }
 
     @Test
-    fun buildSystemPromptIncludesStyleInstructionsWhenNotCasual() {
-        val casualPrompt =
-            TranscriptPostProcessor.buildSystemPrompt(
-                language = Language.GERMAN,
-                style = DictationStyle.CASUAL,
-            )
-        assertFalse(casualPrompt.contains(DictationStyle.FORMAL.promptInstruction(Language.GERMAN)))
-
-        for (style in
-            listOf(
-                DictationStyle.FORMAL,
-                DictationStyle.CODE_PROMPT,
-                DictationStyle.BULLET_POINTS,
-            )) {
+    fun buildSystemPromptIncludesStyleInstructions() {
+        for (style in WritingStyle.entries) {
             val dePrompt =
                 TranscriptPostProcessor.buildSystemPrompt(language = Language.GERMAN, style = style)
             assertTrue(dePrompt.contains(style.promptInstruction(Language.GERMAN)))
@@ -150,14 +138,12 @@ class TranscriptPostProcessorTest {
             processor.process(
                 rawTranscript = "Ich brauche das Dokument.",
                 language = Language.GERMAN,
-                style = DictationStyle.FORMAL,
+                style = WritingStyle.FORMAL,
                 targetAppPackage = "com.microsoft.office.outlook",
             )
 
         assertEquals("Formaler Text.", out)
-        assertTrue(
-            capturedSystem.contains(DictationStyle.FORMAL.promptInstruction(Language.GERMAN))
-        )
+        assertTrue(capturedSystem.contains(WritingStyle.FORMAL.promptInstruction(Language.GERMAN)))
         assertTrue(capturedSystem.contains("Target app: com.microsoft.office.outlook."))
     }
 
@@ -174,13 +160,13 @@ class TranscriptPostProcessorTest {
     }
 
     @Test
-    fun dictationStyleLabelsAndInstructions() {
-        assertEquals("Locker / Chat", DictationStyle.CASUAL.label)
-        assertEquals("Formell / E-Mail", DictationStyle.FORMAL.label)
-        assertEquals("Code & Prompt", DictationStyle.CODE_PROMPT.label)
-        assertEquals("Stichpunkte", DictationStyle.BULLET_POINTS.label)
+    fun writingStyleLabelsAndInstructions() {
+        assertEquals("Casual", WritingStyle.CASUAL.displayName)
+        assertEquals("Formal", WritingStyle.FORMAL.displayName)
+        assertEquals("Very Casual", WritingStyle.VERY_CASUAL.displayName)
+        assertEquals("Excited", WritingStyle.EXCITED.displayName)
 
-        for (style in DictationStyle.entries) {
+        for (style in WritingStyle.entries) {
             assertTrue(style.promptInstruction(Language.GERMAN).isNotBlank())
             assertTrue(style.promptInstruction(Language.ENGLISH).isNotBlank())
         }

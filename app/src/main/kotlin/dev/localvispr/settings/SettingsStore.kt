@@ -3,8 +3,9 @@ package dev.localvispr.settings
 import android.content.Context
 import dev.localvispr.models.ModelCatalog
 import dev.localvispr.models.ModelSpec
-import dev.localvispr.text.DictationStyle
 import dev.localvispr.text.Language
+import dev.localvispr.text.StyleCategory
+import dev.localvispr.text.WritingStyle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +22,10 @@ data class UserSettings(
     val llmModelId: String? = ModelCatalog.defaultLlm.id,
     val languagePreference: LanguagePreference = LanguagePreference.AUTO,
     val dictionaryWords: List<String> = emptyList(),
-    val dictationStyle: DictationStyle = DictationStyle.CASUAL,
+    val personalStyle: WritingStyle = WritingStyle.CASUAL,
+    val workStyle: WritingStyle = WritingStyle.FORMAL,
+    val emailStyle: WritingStyle = WritingStyle.FORMAL,
+    val otherStyle: WritingStyle = WritingStyle.FORMAL,
     val liveStreamingEnabled: Boolean = true,
     val shakeToDictateEnabled: Boolean = false,
     val hapticsEnabled: Boolean = true,
@@ -30,6 +34,14 @@ data class UserSettings(
 ) {
     val sttModel: ModelSpec
         get() = ModelCatalog.byId(sttModelId) ?: ModelCatalog.defaultStt
+
+    fun styleForPackage(packageName: String?): WritingStyle =
+        when (StyleCategory.categoryForPackage(packageName)) {
+            StyleCategory.PERSONAL -> personalStyle
+            StyleCategory.WORK -> workStyle
+            StyleCategory.EMAIL -> emailStyle
+            StyleCategory.OTHER -> otherStyle
+        }
 
     // Null when the user explicitly disabled the LLM cleanup pass (rules-only mode).
     val llmModel: ModelSpec?
@@ -64,9 +76,21 @@ class SettingsStore(context: Context) {
         it.copy(dictionaryWords = words)
     }
 
-    fun setDictationStyle(style: DictationStyle) = update {
-        prefs.edit().putString(KEY_DICTATION_STYLE, style.name).apply()
-        it.copy(dictationStyle = style)
+    fun setCategoryStyle(category: StyleCategory, style: WritingStyle) = update {
+        val key =
+            when (category) {
+                StyleCategory.PERSONAL -> KEY_PERSONAL_STYLE
+                StyleCategory.WORK -> KEY_WORK_STYLE
+                StyleCategory.EMAIL -> KEY_EMAIL_STYLE
+                StyleCategory.OTHER -> KEY_OTHER_STYLE
+            }
+        prefs.edit().putString(key, style.name).apply()
+        when (category) {
+            StyleCategory.PERSONAL -> it.copy(personalStyle = style)
+            StyleCategory.WORK -> it.copy(workStyle = style)
+            StyleCategory.EMAIL -> it.copy(emailStyle = style)
+            StyleCategory.OTHER -> it.copy(otherStyle = style)
+        }
     }
 
     fun setLiveStreamingEnabled(enabled: Boolean) = update {
@@ -118,10 +142,22 @@ class SettingsStore(context: Context) {
                 .split(',')
                 .map(String::trim)
                 .filter(String::isNotEmpty)
-        val style =
-            prefs.getString(KEY_DICTATION_STYLE, null)?.let {
-                runCatching { DictationStyle.valueOf(it) }.getOrNull()
-            } ?: DictationStyle.CASUAL
+        val pStyle =
+            prefs.getString(KEY_PERSONAL_STYLE, null)?.let {
+                runCatching { WritingStyle.valueOf(it) }.getOrNull()
+            } ?: WritingStyle.CASUAL
+        val wStyle =
+            prefs.getString(KEY_WORK_STYLE, null)?.let {
+                runCatching { WritingStyle.valueOf(it) }.getOrNull()
+            } ?: WritingStyle.FORMAL
+        val eStyle =
+            prefs.getString(KEY_EMAIL_STYLE, null)?.let {
+                runCatching { WritingStyle.valueOf(it) }.getOrNull()
+            } ?: WritingStyle.FORMAL
+        val oStyle =
+            prefs.getString(KEY_OTHER_STYLE, null)?.let {
+                runCatching { WritingStyle.valueOf(it) }.getOrNull()
+            } ?: WritingStyle.FORMAL
         val streaming = prefs.getBoolean(KEY_LIVE_STREAMING, true)
         val shake = prefs.getBoolean(KEY_SHAKE_TO_DICTATE, false)
         val haptics = prefs.getBoolean(KEY_HAPTICS, true)
@@ -132,7 +168,10 @@ class SettingsStore(context: Context) {
             llmModelId = llm,
             languagePreference = lang,
             dictionaryWords = dict,
-            dictationStyle = style,
+            personalStyle = pStyle,
+            workStyle = wStyle,
+            emailStyle = eStyle,
+            otherStyle = oStyle,
             liveStreamingEnabled = streaming,
             shakeToDictateEnabled = shake,
             hapticsEnabled = haptics,
@@ -146,7 +185,10 @@ class SettingsStore(context: Context) {
         const val KEY_LLM_MODEL = "llm_model"
         const val KEY_LANGUAGE = "language"
         const val KEY_DICTIONARY = "dictionary"
-        const val KEY_DICTATION_STYLE = "dictation_style"
+        const val KEY_PERSONAL_STYLE = "style_personal"
+        const val KEY_WORK_STYLE = "style_work"
+        const val KEY_EMAIL_STYLE = "style_email"
+        const val KEY_OTHER_STYLE = "style_other"
         const val KEY_LIVE_STREAMING = "live_streaming"
         const val KEY_SHAKE_TO_DICTATE = "shake_to_dictate"
         const val KEY_HAPTICS = "haptics"

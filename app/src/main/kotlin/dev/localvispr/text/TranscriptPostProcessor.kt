@@ -26,7 +26,7 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         language: Language,
         surroundingText: String? = null,
         dictionaryWords: List<String> = emptyList(),
-        style: DictationStyle = DictationStyle.CASUAL,
+        style: WritingStyle = WritingStyle.CASUAL,
         targetAppPackage: String? = null,
     ): String {
         val ruleCleaned = FillerWordFilter.clean(rawTranscript, language)
@@ -64,21 +64,16 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         fun buildSystemPrompt(
             language: Language,
             dictionaryWords: List<String> = emptyList(),
-            style: DictationStyle = DictationStyle.CASUAL,
+            style: WritingStyle = WritingStyle.CASUAL,
             targetAppPackage: String? = null,
         ): String {
             val vocabHint =
                 if (dictionaryWords.isEmpty()) {
                     ""
                 } else {
-                    "\nPreferred spellings: ${dictionaryWords.joinToString(", ")}."
+                    "\nPreferred spellings / dictionary: ${dictionaryWords.joinToString(", ")}."
                 }
-            val styleHint =
-                if (style == DictationStyle.CASUAL) {
-                    ""
-                } else {
-                    "\n${style.promptInstruction(language)}"
-                }
+            val styleHint = "\nStil-Vorgabe: ${style.promptInstruction(language)}"
             val appHint =
                 if (targetAppPackage.isNullOrBlank()) {
                     ""
