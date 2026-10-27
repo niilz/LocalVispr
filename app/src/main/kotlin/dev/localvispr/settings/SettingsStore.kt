@@ -26,6 +26,7 @@ data class UserSettings(
     val shakeToDictateEnabled: Boolean = false,
     val hapticsEnabled: Boolean = true,
     val snoozedUntilEpochMs: Long = 0L,
+    val onboardingCompleted: Boolean = false,
 ) {
     val sttModel: ModelSpec
         get() = ModelCatalog.byId(sttModelId) ?: ModelCatalog.defaultStt
@@ -88,6 +89,11 @@ class SettingsStore(context: Context) {
         it.copy(snoozedUntilEpochMs = epochMs)
     }
 
+    fun setOnboardingCompleted(completed: Boolean) = update {
+        prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETED, completed).apply()
+        it.copy(onboardingCompleted = completed)
+    }
+
     private inline fun update(block: (UserSettings) -> UserSettings) {
         _state.value = block(_state.value)
     }
@@ -120,6 +126,7 @@ class SettingsStore(context: Context) {
         val shake = prefs.getBoolean(KEY_SHAKE_TO_DICTATE, false)
         val haptics = prefs.getBoolean(KEY_HAPTICS, true)
         val snoozed = prefs.getLong(KEY_SNOOZED_UNTIL, 0L)
+        val onboarding = prefs.getBoolean(KEY_ONBOARDING_COMPLETED, false)
         return UserSettings(
             sttModelId = stt,
             llmModelId = llm,
@@ -130,6 +137,7 @@ class SettingsStore(context: Context) {
             shakeToDictateEnabled = shake,
             hapticsEnabled = haptics,
             snoozedUntilEpochMs = snoozed,
+            onboardingCompleted = onboarding,
         )
     }
 
@@ -143,6 +151,7 @@ class SettingsStore(context: Context) {
         const val KEY_SHAKE_TO_DICTATE = "shake_to_dictate"
         const val KEY_HAPTICS = "haptics"
         const val KEY_SNOOZED_UNTIL = "snoozed_until"
+        const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         const val NONE_SENTINEL = "__none__"
     }
 }

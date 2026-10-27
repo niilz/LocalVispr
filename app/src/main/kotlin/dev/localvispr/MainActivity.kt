@@ -63,6 +63,7 @@ import dev.localvispr.accessibility.VisprAccessibilityService
 import dev.localvispr.models.DownloadStatus
 import dev.localvispr.models.ModelCatalog
 import dev.localvispr.models.ModelSpec
+import dev.localvispr.onboarding.OnboardingScreen
 import dev.localvispr.service.FloatingBubbleService
 import dev.localvispr.settings.LanguagePreference
 import dev.localvispr.text.DictationStyle
@@ -73,13 +74,32 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val container = AppContainer.get(this)
-        setContent { MaterialTheme { MainScreen(container) } }
+        setContent {
+            MaterialTheme {
+                val settings by container.settings.state.collectAsState()
+                var viewingOnboarding by remember { mutableStateOf(false) }
+
+                if (!settings.onboardingCompleted || viewingOnboarding) {
+                    OnboardingScreen(
+                        onFinish = {
+                            container.settings.setOnboardingCompleted(true)
+                            viewingOnboarding = false
+                        }
+                    )
+                } else {
+                    MainScreen(
+                        container = container,
+                        onRestartOnboarding = { viewingOnboarding = true },
+                    )
+                }
+            }
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun MainScreen(container: AppContainer) {
+private fun MainScreen(container: AppContainer, onRestartOnboarding: () -> Unit = {}) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val settings by container.settings.state.collectAsState()
@@ -254,6 +274,13 @@ private fun MainScreen(container: AppContainer) {
                                 Text("Snooze 1h", maxLines = 1, softWrap = false)
                             }
                         }
+                    }
+
+                    OutlinedButton(
+                        onClick = onRestartOnboarding,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Onboarding-Tour ansehen", maxLines = 1, softWrap = false)
                     }
                 }
             }

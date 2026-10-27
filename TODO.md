@@ -32,4 +32,5 @@ Diese Liste wurde per paarweisem Vergleich im Vergleich zur Referenz-App (_Wispr
 ## Zusätzliche technische Aufgaben
 
 - [x] **Optionale eigene Tastatur (`InputMethodService` / IME):** Zweiter Auslöser und nativer composing text.
+- [x] **Schlanker Onboarding-Flow implementiert:** 4-Schritte-Assistent (Vision/Datenschutz, interaktives Testfeld, Berechtigungs-Assistent mit Accessibility-Warnhinweis vor System-Shortcuts, Startklar-Screen).
 - [x] **R8 / ProGuard Keep-Regeln:** Release-Verifizierung für native JNI-Klassen (`sherpa-onnx`, `litertlm-android`).

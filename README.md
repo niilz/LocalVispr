@@ -14,6 +14,7 @@
 ## Features
 
 - **100 % On-Device & Datenschutzfreundlich:** Weder Audioaufnahmen noch Transkripte verlassen das Gerät. Spracherkennung und Bereinigung arbeiten vollständig offline.
+- **Schlanker Onboarding-Flow:** Schnelle 4-Schritte-Einführung mit Vision, interaktivem Testfeld und geführtem Berechtigungs-Assistenten (inkl. wichtigem Warnhinweis vor störenden System-Shortcuts).
 - **Schwebende Cyberpunk-Blase (Floating Overlay):**
   - Frei verschiebbare Kapsel mit neon-metallischem "V"-Logo (`TYPE_APPLICATION_OVERLAY`), die sich beim Diktieren magnetisch am Bildschirmrand dockt.
   - Dehnt sich während der Aufnahme zu einer horizontalen Kapsel mit animiertem Waveform-Equalizer und Live-Pegelausschlag aus.
