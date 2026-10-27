@@ -22,7 +22,6 @@ data class UserSettings(
     val languagePreference: LanguagePreference = LanguagePreference.AUTO,
     val dictionaryWords: List<String> = emptyList(),
     val dictationStyle: DictationStyle = DictationStyle.CASUAL,
-    val autoHideBubble: Boolean = true,
     val liveStreamingEnabled: Boolean = true,
     val shakeToDictateEnabled: Boolean = false,
     val hapticsEnabled: Boolean = true,
@@ -67,11 +66,6 @@ class SettingsStore(context: Context) {
     fun setDictationStyle(style: DictationStyle) = update {
         prefs.edit().putString(KEY_DICTATION_STYLE, style.name).apply()
         it.copy(dictationStyle = style)
-    }
-
-    fun setAutoHideBubble(enabled: Boolean) = update {
-        prefs.edit().putBoolean(KEY_AUTO_HIDE_BUBBLE, enabled).apply()
-        it.copy(autoHideBubble = enabled)
     }
 
     fun setLiveStreamingEnabled(enabled: Boolean) = update {
@@ -122,7 +116,6 @@ class SettingsStore(context: Context) {
             prefs.getString(KEY_DICTATION_STYLE, null)?.let {
                 runCatching { DictationStyle.valueOf(it) }.getOrNull()
             } ?: DictationStyle.CASUAL
-        val autoHide = prefs.getBoolean(KEY_AUTO_HIDE_BUBBLE, true)
         val streaming = prefs.getBoolean(KEY_LIVE_STREAMING, true)
         val shake = prefs.getBoolean(KEY_SHAKE_TO_DICTATE, false)
         val haptics = prefs.getBoolean(KEY_HAPTICS, true)
@@ -133,7 +126,6 @@ class SettingsStore(context: Context) {
             languagePreference = lang,
             dictionaryWords = dict,
             dictationStyle = style,
-            autoHideBubble = autoHide,
             liveStreamingEnabled = streaming,
             shakeToDictateEnabled = shake,
             hapticsEnabled = haptics,
@@ -147,7 +139,6 @@ class SettingsStore(context: Context) {
         const val KEY_LANGUAGE = "language"
         const val KEY_DICTIONARY = "dictionary"
         const val KEY_DICTATION_STYLE = "dictation_style"
-        const val KEY_AUTO_HIDE_BUBBLE = "auto_hide_bubble"
         const val KEY_LIVE_STREAMING = "live_streaming"
         const val KEY_SHAKE_TO_DICTATE = "shake_to_dictate"
         const val KEY_HAPTICS = "haptics"
