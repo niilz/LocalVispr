@@ -54,7 +54,7 @@ class VoiceRecorder {
         val bufferSize = maxOf(minBuf * 2, PcmSamples.SAMPLE_RATE_HZ * 2)
         val audioRecord =
             AudioRecord(
-                MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                MediaRecorder.AudioSource.MIC,
                 PcmSamples.SAMPLE_RATE_HZ,
                 AudioFormat.CHANNEL_IN_MONO,
                 AudioFormat.ENCODING_PCM_16BIT,

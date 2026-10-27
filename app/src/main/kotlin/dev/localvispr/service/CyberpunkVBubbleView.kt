@@ -253,28 +253,33 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
             when (state) {
                 DictationState.IDLE ->
                     Triple(
-                        Color.parseColor("#FF1E9A"),
-                        Color.parseColor("#8B2CF5"),
+                        Color.parseColor("#FF1E9A"), // Hot neon pink top
+                        Color.parseColor("#8B2CF5"), // Electric purple bottom
                         Color.parseColor("#CCFF1E9A"),
                     )
                 DictationState.LISTENING ->
                     Triple(
-                        Color.parseColor("#FF0066"),
-                        Color.parseColor("#A855F7"),
-                        Color.parseColor("#FFFF0066"),
+                        Color.parseColor(
+                            "#FFE600"
+                        ), // Brilliant cyberpunk neon-yellow top during recording!
+                        Color.parseColor("#FF0099"), // Saturated neon-magenta/purple bottom
+                        Color.parseColor("#FFFFE600"),
                     )
                 DictationState.PROCESSING ->
                     Triple(
-                        Color.parseColor("#FFB800"),
-                        Color.parseColor("#9333EA"),
-                        Color.parseColor("#CCFFB800"),
+                        Color.parseColor("#FF9900"), // Warm amber-gold top
+                        Color.parseColor("#7E22CE"), // Deep violet bottom
+                        Color.parseColor("#CCFF9900"),
                     )
             }
         val (topCore, bottomCore) =
-            if (state == DictationState.PROCESSING) {
-                Color.parseColor("#FFF7D6") to Color.parseColor("#E9D5FF")
-            } else {
-                Color.parseColor("#FFD6F5") to Color.parseColor("#E9D5FF")
+            when (state) {
+                DictationState.IDLE -> Color.parseColor("#FFD6F5") to Color.parseColor("#E9D5FF")
+                DictationState.LISTENING ->
+                    Color.parseColor("#FFFFF0") to
+                        Color.parseColor("#FFD6F5") // Bright white-yellow core
+                DictationState.PROCESSING ->
+                    Color.parseColor("#FFF7D6") to Color.parseColor("#E9D5FF")
             }
 
         // Slightly diagonal axis (~28 degrees) with tight midpoint transition (0.43 .. 0.57).
@@ -283,6 +288,42 @@ class CyberpunkVBubbleView(context: Context) : View(context) {
         val gx1 = s * 0.66f
         val gy1 = s * 0.78f
         val splits = floatArrayOf(0f, 0.43f, 0.57f, 1f)
+
+        // Dynamically update the metallic V body shader to match state colors
+        val (bodyTop1, bodyTop2, bodyBottom1, bodyBottom2) =
+            when (state) {
+                DictationState.IDLE ->
+                    listOf(
+                        Color.parseColor("#FF94D8"),
+                        Color.parseColor("#EC4899"),
+                        Color.parseColor("#7C3AED"),
+                        Color.parseColor("#2E1065"),
+                    )
+                DictationState.LISTENING ->
+                    listOf(
+                        Color.parseColor("#FFF066"), // Metallic gold-yellow top
+                        Color.parseColor("#F59E0B"),
+                        Color.parseColor("#EC4899"),
+                        Color.parseColor("#4C1D95"),
+                    )
+                DictationState.PROCESSING ->
+                    listOf(
+                        Color.parseColor("#FCD34D"),
+                        Color.parseColor("#D97706"),
+                        Color.parseColor("#6D28D9"),
+                        Color.parseColor("#2E1065"),
+                    )
+            }
+        vBodyPaint.shader =
+            LinearGradient(
+                gx0,
+                gy0,
+                gx1,
+                gy1,
+                intArrayOf(bodyTop1, bodyTop2, bodyBottom1, bodyBottom2),
+                splits,
+                Shader.TileMode.CLAMP,
+            )
         val tubeGradient =
             LinearGradient(
                 gx0,
