@@ -211,7 +211,7 @@ private fun IntroStepContent() {
         Text(
             text =
                 "Sprich frei heraus. LocalVispr verwandelt deine Stimme in präzisen, " +
-                    "vollständig bereinigten Text – ganz ohne Cloud, ohne Benutzerkonto und ohne Latenz.",
+                    "vollständig bereinigten Text – ganz ohne Cloud, ohne Benutzerkonto und 100 % privat auf deinem Gerät.",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
