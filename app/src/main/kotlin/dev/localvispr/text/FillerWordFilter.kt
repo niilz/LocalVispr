@@ -47,8 +47,9 @@ object FillerWordFilter {
     private val SENTENCE_START = Regex("""(?:^|(?<=[.!?]\s))(\p{Ll})""")
 
     fun clean(raw: String, language: Language): String {
+        val normalizedPunct = SpokenPunctuationNormalizer.normalize(raw, language)
         val fillers = fillersPattern(language)
-        var text = NON_SPEECH_TAG.replace(raw, " ")
+        var text = NON_SPEECH_TAG.replace(normalizedPunct, " ")
 
         // Mid-sentence filler wrapped in commas: "Ich wollte, äh, sagen" -> "Ich wollte sagen",
         // except before German subordinators where the comma belongs to the clause.
