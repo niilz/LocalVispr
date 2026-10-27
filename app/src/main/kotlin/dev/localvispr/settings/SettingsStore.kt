@@ -22,7 +22,7 @@ data class UserSettings(
     val languagePreference: LanguagePreference = LanguagePreference.AUTO,
     val dictionaryWords: List<String> = emptyList(),
     val dictationStyle: DictationStyle = DictationStyle.CASUAL,
-    val autoHideBubble: Boolean = false,
+    val autoHideBubble: Boolean = true,
     val liveStreamingEnabled: Boolean = true,
     val shakeToDictateEnabled: Boolean = false,
     val hapticsEnabled: Boolean = true,
@@ -122,7 +122,7 @@ class SettingsStore(context: Context) {
             prefs.getString(KEY_DICTATION_STYLE, null)?.let {
                 runCatching { DictationStyle.valueOf(it) }.getOrNull()
             } ?: DictationStyle.CASUAL
-        val autoHide = prefs.getBoolean(KEY_AUTO_HIDE_BUBBLE, false)
+        val autoHide = prefs.getBoolean(KEY_AUTO_HIDE_BUBBLE, true)
         val streaming = prefs.getBoolean(KEY_LIVE_STREAMING, true)
         val shake = prefs.getBoolean(KEY_SHAKE_TO_DICTATE, false)
         val haptics = prefs.getBoolean(KEY_HAPTICS, true)

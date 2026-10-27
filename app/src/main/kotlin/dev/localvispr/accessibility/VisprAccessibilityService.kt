@@ -6,6 +6,7 @@ import android.content.ClipboardManager
 import android.os.Bundle
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
 import dev.localvispr.text.EditorContext
 import dev.localvispr.text.TranscriptPostProcessor
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,10 +34,11 @@ class VisprAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         _instance.value = this
+        _hasEditableFocus.value = isInputActive()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        _hasEditableFocus.value = findFocusedEditableNode() != null
+        _hasEditableFocus.value = isInputActive()
     }
 
     override fun onInterrupt() = Unit
@@ -129,16 +131,33 @@ class VisprAccessibilityService : AccessibilityService() {
         return InsertionOutcome.COPIED_TO_CLIPBOARD
     }
 
-    private fun findFocusedEditableNode(): AccessibilityNodeInfo? {
-        rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { focused ->
-            if (focused.isEditable) return focused
+    // Matches Wispr Flow's `SoftKeyboardStateTracker` + `FocusedNodeFinder`:
+    // input is considered active when the soft keyboard window (`TYPE_INPUT_METHOD`)
+    // is on screen OR an editable / `ACTION_SET_TEXT`-capable node holds input focus
+    // (the latter also covers Jetpack Compose `OutlinedTextField`).
+    private fun isInputActive(): Boolean {
+        val allWindows = runCatching { windows }.getOrNull().orEmpty()
+        if (allWindows.any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }) {
+            return true
         }
-        for (window in windows) {
+        return findFocusedEditableNode(allWindows) != null
+    }
+
+    private fun findFocusedEditableNode(
+        allWindows: List<AccessibilityWindowInfo> = runCatching { windows }.getOrNull().orEmpty()
+    ): AccessibilityNodeInfo? {
+        rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.let { focused ->
+            if (isNodeEditable(focused)) return focused
+        }
+        for (window in allWindows) {
             val node = window.root?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            if (node != null && node.isEditable) return node
+            if (node != null && isNodeEditable(node)) return node
         }
         return null
     }
+
+    private fun isNodeEditable(node: AccessibilityNodeInfo): Boolean =
+        node.isEditable || node.actionList.any { it.id == AccessibilityNodeInfo.ACTION_SET_TEXT }
 
     companion object {
         private val _instance = MutableStateFlow<VisprAccessibilityService?>(null)
