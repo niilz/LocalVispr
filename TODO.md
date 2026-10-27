@@ -8,8 +8,8 @@ Diese Liste wurde per paarweisem Vergleich im Vergleich zur Referenz-App (_Wispr
   - Blase nur dann auf dem Bildschirm anzeigen, wenn ein bearbeitbares Textfeld fokussiert oder die Bildschirmtastatur aktiv ist (`SoftKeyboardStateTracker`, `FocusedNodeFinder` im Accessibility Service).
 - [x] **2. Umfeld-Kontext (`ax_context`)**
   - Vor der Glättung umliegenden Text im fokussierten Feld via `getSurroundingText(...)` sowie die aktive Ziel-App auslesen und an das LLM übergeben (für Groß-/Kleinschreibung, Satzanschlüsse und Fachkontext).
-- [x] **3. Bluetooth- & Headset-Routing (`AudioDeviceCallback`)**
-  - Dynamisches Routing des Audio-Inputs auf verbundene Bluetooth-Headsets (SCO/HFP) oder kabelgebundene Mikrofone über den `AudioManager`.
+- [ ] **3. Bluetooth- & Headset-Routing**
+  - Entfällt: Androids Audio-Framework routet verbundene Bluetooth- (SCO/BLE) und Kabel-Headsets bei `AudioSource.MIC` bereits nativ und automatisch. Wispr Flow verzichtet ebenfalls auf erzwungenes `setCommunicationDevice`, um Konflikte mit Browser- und Media-Apps zu vermeiden.
 - [x] **4. Live-Transkription (Streaming)**
   - Während der Aufnahme periodisch Zwischenstände transkribieren und wahlweise als Overlay-Vorschau oder direkt via `commitText(...)` / `deleteSurroundingText(...)` im Ziel-Feld aktualisieren.
 - [x] **5. Stil- und Tonalitäts-Profile**

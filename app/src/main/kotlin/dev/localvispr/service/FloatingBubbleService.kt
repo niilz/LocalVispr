@@ -25,7 +25,6 @@ import dev.localvispr.AppContainer
 import dev.localvispr.MainActivity
 import dev.localvispr.R
 import dev.localvispr.accessibility.VisprAccessibilityService
-import dev.localvispr.audio.AudioRouteMonitor
 import dev.localvispr.audio.VoiceRecorder
 import dev.localvispr.sensors.ShakeDetector
 import dev.localvispr.settings.UserSettings
@@ -69,7 +68,6 @@ class FloatingBubbleService : Service() {
     private val recorder = VoiceRecorder()
     private val container by lazy { AppContainer.get(this) }
     private val haptics by lazy { BubbleHaptics(this) }
-    private var audioRouteMonitor: AudioRouteMonitor? = null
     private var shakeDetector: ShakeDetector? = null
 
     private var windowManager: WindowManager? = null
@@ -98,8 +96,6 @@ class FloatingBubbleService : Service() {
         scope.launch {
             recorder.audioLevel.collect { level -> waveformPillView?.setAudioLevel(level) }
         }
-
-        audioRouteMonitor = AudioRouteMonitor(this).apply { start() }
 
         shakeDetector = ShakeDetector(this) { onBubbleTapped() }
         scope.launch {
@@ -147,8 +143,6 @@ class FloatingBubbleService : Service() {
         if (recorder.isRecording) recorder.cancel()
         shakeDetector?.stop()
         shakeDetector = null
-        audioRouteMonitor?.stop()
-        audioRouteMonitor = null
         snapAnimator?.cancel()
         snapAnimator = null
         rootContainer?.animate()?.cancel()
