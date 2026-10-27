@@ -107,6 +107,15 @@ private fun MainScreen(container: AppContainer) {
     val hasOverlayPermission = remember(refreshTick) { Settings.canDrawOverlays(context) }
     val hasAccessibility = accessibilityInstance != null
 
+    // Automatically keep the background bubble service alive as soon as the
+    // required permissions are granted — no manual "Start bubble" button needed.
+    DisposableEffect(hasMicPermission, hasOverlayPermission, bubbleRunning) {
+        if (hasMicPermission && hasOverlayPermission && !bubbleRunning) {
+            runCatching { FloatingBubbleService.start(context) }
+        }
+        onDispose {}
+    }
+
     val permissionLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             refreshTick++
@@ -197,29 +206,8 @@ private fun MainScreen(container: AppContainer) {
                             context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                         },
                     )
-                    Button(
-                        enabled = hasMicPermission && hasOverlayPermission,
-                        onClick = {
-                            if (bubbleRunning) {
-                                FloatingBubbleService.stop(context)
-                            } else {
-                                FloatingBubbleService.start(context)
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text(
-                            if (bubbleRunning) "Schwebende Blase beenden"
-                            else "Schwebende Blase starten"
-                        )
-                    }
 
                     // Switches for bubble behavior
-                    SettingSwitchRow(
-                        label = "Nur bei aktivem Textfeld zeigen",
-                        checked = settings.autoHideBubble,
-                        onCheckedChange = { container.settings.setAutoHideBubble(it) },
-                    )
                     SettingSwitchRow(
                         label = "Live-Text während des Sprechens",
                         checked = settings.liveStreamingEnabled,

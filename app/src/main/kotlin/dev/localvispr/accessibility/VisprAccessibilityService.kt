@@ -1,12 +1,16 @@
 package dev.localvispr.accessibility
 
+import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.pm.PackageManager
 import android.os.Bundle
+import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
+import dev.localvispr.service.FloatingBubbleService
 import dev.localvispr.text.EditorContext
 import dev.localvispr.text.TranscriptPostProcessor
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,10 +39,24 @@ class VisprAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         _instance.value = this
         _hasEditableFocus.value = isInputActive()
+        ensureBubbleServiceRunning()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        _hasEditableFocus.value = isInputActive()
+        val active = isInputActive()
+        _hasEditableFocus.value = active
+        if (active && !FloatingBubbleService.running.value) {
+            ensureBubbleServiceRunning()
+        }
+    }
+
+    private fun ensureBubbleServiceRunning() {
+        val hasMic =
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+        if (hasMic && Settings.canDrawOverlays(this) && !FloatingBubbleService.running.value) {
+            runCatching { FloatingBubbleService.start(this) }
+        }
     }
 
     override fun onInterrupt() = Unit

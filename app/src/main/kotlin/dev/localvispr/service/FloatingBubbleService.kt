@@ -153,7 +153,7 @@ class FloatingBubbleService : Service() {
         val settings = container.settings.state.value
         val show =
             BubbleVisibilityPolicy.shouldShowBubble(
-                autoHideOnNoFocus = settings.autoHideBubble,
+                autoHideOnNoFocus = true,
                 hasEditableFocus = VisprAccessibilityService.hasEditableFocus.value,
                 isDictatingOrProcessing = _dictationState.value != DictationState.IDLE,
                 snoozedUntilEpochMs = settings.snoozedUntilEpochMs,
