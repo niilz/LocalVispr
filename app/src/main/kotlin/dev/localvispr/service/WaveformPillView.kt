@@ -10,6 +10,8 @@ import android.graphics.Shader
 import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import kotlin.math.max
 import kotlin.math.sin
 
@@ -20,13 +22,12 @@ import kotlin.math.sin
 //
 // Appears next to the circular Cyberpunk-V bubble only while a dictation is
 // active (`LISTENING` or `PROCESSING`):
-// - Left: compact "✕" cancel circle to discard the recording.
-// - Centre: dark metallic pill with 10 symmetric equalizer bars using the exact
-//   bell-curve envelope from the reference app (`BAR_SCALES`). When `audioLevel`
-//   is 0 (silence), the bars rest completely still as minimal dots/ticks; they
-//   only animate while actual speech energy arrives.
-// - During `PROCESSING` (`FrozenTranscription`), the bars freeze at 33 % opacity
-//   and a spinning neon arc indicates local transcription/cleanup.
+// - Starts as `GONE` so the idle overlay window is only as wide as the 64 dp V
+//   bubble and can be dragged freely across the full screen width.
+// - Mirrors its layout automatically when the bubble is docked on the right
+//   screen edge (`dockedRight == true` -> `[✕] [Equalizer] [V]`;
+//   `dockedRight == false` -> `[V] [Equalizer] [✕]`).
+// - Animates in with scale + alpha from the V bubble instead of popping in.
 
 class WaveformPillView(
     context: Context,
@@ -35,6 +36,7 @@ class WaveformPillView(
 ) : View(context) {
 
     private var state: DictationState = DictationState.IDLE
+    private var dockedRight: Boolean = false
     private var targetAudioLevel: Float = 0f
     private var smoothedAudioLevel: Float = 0f
     private val barHeights = FloatArray(NUM_BARS)
@@ -63,10 +65,25 @@ class WaveformPillView(
             color = Color.parseColor("#6EE7F9")
         }
 
+    init {
+        // Must start GONE so the idle overlay window is 64 dp wide rather than 228 dp.
+        visibility = GONE
+        alpha = 0f
+        scaleX = 0.5f
+        scaleY = 0.5f
+    }
+
+    fun setDockedRight(isDockedRight: Boolean) {
+        if (dockedRight != isDockedRight) {
+            dockedRight = isDockedRight
+            pivotX = if (dockedRight) width.toFloat() else 0f
+            invalidate()
+        }
+    }
+
     fun setDictationState(next: DictationState) {
-        if (state == next) return
+        val previous = state
         if (next == DictationState.PROCESSING) {
-            // Freeze the last bar snapshot just like `WaveformState.setFrozenHeights`.
             System.arraycopy(barHeights, 0, frozenHeights, 0, NUM_BARS)
         } else if (next == DictationState.IDLE) {
             targetAudioLevel = 0f
@@ -74,8 +91,43 @@ class WaveformPillView(
             barHeights.fill(0f)
         }
         state = next
-        visibility = if (next == DictationState.IDLE) GONE else VISIBLE
-        invalidate()
+
+        if (next == DictationState.IDLE) {
+            if (visibility != GONE) {
+                animate().cancel().let {
+                    animate()
+                        .alpha(0f)
+                        .scaleX(0.55f)
+                        .scaleY(0.55f)
+                        .setDuration(140L)
+                        .setInterpolator(DecelerateInterpolator())
+                        .withEndAction {
+                            if (state == DictationState.IDLE) {
+                                visibility = GONE
+                            }
+                        }
+                        .start()
+                }
+            }
+        } else {
+            val wasHidden = visibility != VISIBLE || previous == DictationState.IDLE
+            visibility = VISIBLE
+            if (wasHidden) {
+                pivotX = if (dockedRight) width.toFloat().coerceAtLeast(dpF(156f)) else 0f
+                pivotY = height.toFloat().coerceAtLeast(dpF(46f)) / 2f
+                alpha = 0f
+                scaleX = 0.55f
+                scaleY = 0.55f
+                animate()
+                    .alpha(1f)
+                    .scaleX(1f)
+                    .scaleY(1f)
+                    .setDuration(210L)
+                    .setInterpolator(OvershootInterpolator(1.25f))
+                    .start()
+            }
+            invalidate()
+        }
     }
 
     fun setAudioLevel(level: Float) {
@@ -90,6 +142,8 @@ class WaveformPillView(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w <= 0 || h <= 0) return
+        pivotX = if (dockedRight) w.toFloat() else 0f
+        pivotY = h / 2f
 
         housingPaint.shader =
             LinearGradient(
@@ -111,7 +165,7 @@ class WaveformPillView(
                 intArrayOf(
                     Color.parseColor("#FF1E9A"),
                     Color.parseColor("#6EE7F9"),
-                    Color.parseColor("#FF1E9A"),
+                    Color.parseColor("#8B2CF5"),
                 ),
                 floatArrayOf(0f, 0.5f, 1f),
                 Shader.TileMode.CLAMP,
@@ -122,8 +176,8 @@ class WaveformPillView(
                 h * 0.18f,
                 0f,
                 h * 0.82f,
-                Color.parseColor("#7CF7FF"),
-                Color.parseColor("#FF2BD6"),
+                Color.parseColor("#FF1E9A"),
+                Color.parseColor("#8B2CF5"),
                 Shader.TileMode.CLAMP,
             )
         cancelCrossPaint.strokeWidth = dpF(2f)
@@ -137,13 +191,24 @@ class WaveformPillView(
         val h = height.toFloat()
         val w = width.toFloat()
         val cancelRadius = h * 0.38f
-        val cancelCx = w - cancelRadius - dpF(3f)
         val cancelCy = h / 2f
 
-        // 1. Main equalizer pill container directly next to the V bubble (on the left),
-        // with the circular "✕" cancel button on the far right.
-        val pillLeft = dpF(3f)
-        val pillRight = cancelCx - cancelRadius - dpF(6f)
+        // Place the "✕" button on the outer end (away from the V bubble):
+        // - Left-docked:  [V] [Equalizer] [✕]  (cancel on the right)
+        // - Right-docked: [✕] [Equalizer] [V]  (cancel on the left)
+        val cancelCx: Float
+        val pillLeft: Float
+        val pillRight: Float
+        if (dockedRight) {
+            cancelCx = cancelRadius + dpF(3f)
+            pillLeft = cancelCx + cancelRadius + dpF(6f)
+            pillRight = w - dpF(3f)
+        } else {
+            cancelCx = w - cancelRadius - dpF(3f)
+            pillLeft = dpF(3f)
+            pillRight = cancelCx - cancelRadius - dpF(6f)
+        }
+
         val pillTop = dpF(3f)
         val pillBottom = h - dpF(3f)
         val pillHeight = pillBottom - pillTop
@@ -152,7 +217,6 @@ class WaveformPillView(
         canvas.drawRoundRect(pillRect, pillRadius, pillRadius, housingPaint)
         canvas.drawRoundRect(pillRect, pillRadius, pillRadius, borderPaint)
 
-        // 2. Right circular "✕" cancel button.
         canvas.drawCircle(cancelCx, cancelCy, cancelRadius, cancelDiscPaint)
         canvas.drawCircle(cancelCx, cancelCy, cancelRadius, borderPaint)
         val crossHalf = cancelRadius * 0.34f
@@ -171,21 +235,19 @@ class WaveformPillView(
             cancelCrossPaint,
         )
 
-        // 3. Smooth the incoming speech level (same 0.15 smoothing factor as Constants.java).
         smoothedAudioLevel += (targetAudioLevel - smoothedAudioLevel) * SMOOTHING_FACTOR
         if (smoothedAudioLevel < 0.01f) smoothedAudioLevel = 0f
 
         val barWidth = dpF(3.4f)
         val barGap = dpF(3.6f)
-        val minBarH = barWidth // circular dot when silent
+        val minBarH = barWidth
         val maxBarH = pillHeight * 0.68f
         val totalBarsWidth = NUM_BARS * barWidth + (NUM_BARS - 1) * barGap
-        // Leave room on the right for the spinner during PROCESSING.
         val waveformAreaRight =
             if (state == DictationState.PROCESSING) pillRect.right - dpF(24f) else pillRect.right
         val startX = pillRect.left + ((waveformAreaRight - pillRect.left) - totalBarsWidth) / 2f
 
-        barPaint.alpha = if (state == DictationState.PROCESSING) 85 else 255 // 33% when frozen
+        barPaint.alpha = if (state == DictationState.PROCESSING) 85 else 255
 
         val elapsedSec = (System.nanoTime() - startTimeNanos) / 1_000_000_000.0
         for (i in 0 until NUM_BARS) {
@@ -193,10 +255,8 @@ class WaveformPillView(
                 if (state == DictationState.PROCESSING) {
                     max(minBarH, frozenHeights[i])
                 } else if (smoothedAudioLevel <= 0f) {
-                    // Completely still when no speech arrives.
                     minBarH
                 } else {
-                    // Travelling wave modulated by the bell-curve envelope and speech level.
                     val wave = 0.68f + 0.32f * sin((elapsedSec * 7.5) + i * 0.65).toFloat()
                     val activeH = wave * BAR_SCALES[i] * maxBarH * smoothedAudioLevel
                     max(minBarH, activeH)
@@ -209,7 +269,6 @@ class WaveformPillView(
             canvas.drawRoundRect(barRect, barWidth / 2f, barWidth / 2f, barPaint)
         }
 
-        // 4. Spinning loader on the right side of the pill while transcribing/cleaning.
         if (state == DictationState.PROCESSING) {
             val r = dpF(7f)
             val cx = pillRect.right - dpF(14f)
@@ -219,7 +278,6 @@ class WaveformPillView(
             canvas.drawArc(spinnerRect, sweepStart, 250f, false, spinnerPaint)
         }
 
-        // Keep redrawing at 60 fps only while bars are moving or the spinner is active.
         if (
             state == DictationState.PROCESSING || smoothedAudioLevel > 0f || targetAudioLevel > 0f
         ) {
@@ -229,8 +287,13 @@ class WaveformPillView(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (event.actionMasked == MotionEvent.ACTION_UP) {
-            val cancelBoundary = width - height * 0.9f
-            if (event.x >= cancelBoundary) {
+            val isCancelHit =
+                if (dockedRight) {
+                    event.x <= height * 0.9f
+                } else {
+                    event.x >= width - height * 0.9f
+                }
+            if (isCancelHit) {
                 onCancelTapped()
             } else {
                 onConfirmTapped()
@@ -249,7 +312,6 @@ class WaveformPillView(
     private companion object {
         const val NUM_BARS = 10
         const val SMOOTHING_FACTOR = 0.22f
-        // Exact symmetric envelope from Wispr Flow's `Constants.barScales`.
         val BAR_SCALES =
             floatArrayOf(0.25f, 0.47f, 0.69f, 0.875f, 1.0f, 1.0f, 0.875f, 0.69f, 0.47f, 0.25f)
     }
