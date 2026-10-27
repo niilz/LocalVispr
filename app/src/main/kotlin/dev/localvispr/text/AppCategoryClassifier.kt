@@ -32,19 +32,30 @@ enum class WritingStyle(val id: String, val displayName: String, val subtitle: S
             Language.GERMAN ->
                 when (this) {
                     FORMAL ->
-                        "Verwende einen formellen, professionellen Tonfall mit vollständigen Sätzen und präziser Zeichensetzung."
+                        "Formatiere den Text als förmliche E-Mail oder geschäftliche Nachricht. " +
+                            "Verwende die formelle Sie-Form ('Sie', 'Ihnen', 'Ihr' großgeschrieben). " +
+                            "Gliedere Sinneinheiten und neue Gedanken zwingend mit Absätzen (Leerzeilen). " +
+                            "Setze nach Anreden (z.B. 'Sehr geehrte Damen und Herren,', 'Hallo Herr ...,') " +
+                            "und vor Grußformeln (z.B. 'Mit freundlichen Grüßen', 'Beste Grüße') immer einen Zeilenumbruch. " +
+                            "Verwende vollständige, grammatikalisch einwandfreie Sätze mit präziser Zeichensetzung."
                     CASUAL ->
-                        "Halte den Text in einem natürlichen, entspannten und freundlichen Umgangston."
+                        "Halte den Text in einem natürlichen, entspannten und freundlichen Umgangston. " +
+                            "Verwende flüssigen Satzbau und normale Zeichensetzung."
                     VERY_CASUAL ->
-                        "Formatiere sehr locker wie in einem schnellen Chat; keine übertriebene Zeichensetzung, kurze direkte Phrasen."
+                        "Formatiere sehr locker wie in einem schnellen Chat; keine steife Zeichensetzung, kurze direkte Phrasen."
                     EXCITED ->
                         "Formuliere lebendig, enthusiastisch und ausdrucksstark mit dynamischem Satzbau."
                 }
             Language.ENGLISH ->
                 when (this) {
                     FORMAL ->
-                        "Use a formal, professional tone with complete sentences and precise punctuation."
-                    CASUAL -> "Keep the text natural, relaxed, and conversational."
+                        "Format the text as a formal email or professional communication. " +
+                            "Structure distinct points and paragraphs with clean line breaks. " +
+                            "Place a line break after greetings (e.g. 'Dear Mr. ...,', 'Hi team,') " +
+                            "and before sign-offs (e.g. 'Best regards,', 'Sincerely,'). " +
+                            "Use complete, grammatically correct sentences with precise punctuation."
+                    CASUAL ->
+                        "Keep the text natural, relaxed, and conversational with fluent punctuation."
                     VERY_CASUAL ->
                         "Format casually for quick messaging; keep punctuation minimal and phrasing direct."
                     EXCITED ->

@@ -81,7 +81,18 @@ class VisprAccessibilityService : AccessibilityService() {
     }
 
     fun readEditorContext(maxChars: Int = 200): EditorContext {
-        val pkg = rootInActiveWindow?.packageName?.toString()
+        // Find the actual application package, ignoring soft keyboard windows
+        val appWindow =
+            runCatching { windows }
+                .getOrNull()
+                ?.firstOrNull {
+                    it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION
+                }
+        val pkg =
+            appWindow?.root?.packageName?.toString()
+                ?: rootInActiveWindow?.packageName?.toString()
+                ?: findFocusedEditableNode()?.packageName?.toString()
+
         val ic = inputMethod?.currentInputConnection
         if (ic != null) {
             val surrounding =
