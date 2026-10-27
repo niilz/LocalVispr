@@ -5,13 +5,13 @@ plugins {
 
 android {
     namespace = "dev.localvispr"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "dev.localvispr"
         // API 33 is the floor: text injection relies on AccessibilityService.getInputMethod().
         minSdk = 33
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
 

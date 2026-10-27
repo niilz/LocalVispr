@@ -28,8 +28,25 @@ class LiteRtLlmEngine(private val repository: ModelRepository, private val cache
     fun clientFor(spec: ModelSpec?): LlmClient? {
         // `liblitertlm_jni.so` emits ARMv8.2+ instructions (dotprod/i8mm) that
         // trigger SIGILL on the Android QEMU emulator's baseline Cortex-A57 CPU.
-        if (isProbablyEmulator() || spec == null || !repository.isInstalled(spec)) return null
-        val activeEngine = ensureEngine(spec)
+        if (isProbablyEmulator()) {
+            android.util.Log.d("LocalVispr", "clientFor: skipping native LLM on QEMU emulator")
+            return null
+        }
+        if (spec == null) {
+            android.util.Log.d("LocalVispr", "clientFor: spec is null (rules-only mode)")
+            return null
+        }
+        if (!repository.isInstalled(spec)) {
+            android.util.Log.w("LocalVispr", "clientFor: model ${spec.id} not installed")
+            return null
+        }
+        val activeEngine =
+            try {
+                ensureEngine(spec)
+            } catch (t: Throwable) {
+                android.util.Log.e("LocalVispr", "clientFor: ensureEngine failed for ${spec.id}", t)
+                return null
+            }
         return LlmClient { systemPrompt, userMessage ->
             val config =
                 ConversationConfig(

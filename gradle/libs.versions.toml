@@ -1,10 +1,8 @@
 [versions]
-agp = "9.2.1"
-# Kotlin newer than the AGP-bundled default: litertlm-android is compiled with
-# a recent Kotlin and its metadata cannot be read by older compilers.
-kotlin = "2.4.21"
+agp = "8.8.2"
+kotlin = "2.1.10"
 coroutines = "1.10.2"
-composeBom = "2025.09.00"
+composeBom = "2024.12.01"
 activityCompose = "1.10.1"
 coreKtx = "1.16.0"
 lifecycle = "2.9.2"

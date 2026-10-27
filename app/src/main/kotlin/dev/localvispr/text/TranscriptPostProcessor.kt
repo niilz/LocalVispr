@@ -35,19 +35,23 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         val client = llm ?: return ruleCleaned
 
         val rawModelOutput =
-            runCatching {
-                    client.complete(
-                        systemPrompt =
-                            buildSystemPrompt(
-                                language = language,
-                                dictionaryWords = dictionaryWords,
-                                style = style,
-                                targetAppPackage = targetAppPackage,
-                            ),
-                        userMessage = buildUserMessage(ruleCleaned, surroundingText),
-                    )
-                }
-                .getOrNull() ?: return ruleCleaned
+            try {
+                client.complete(
+                    systemPrompt =
+                        buildSystemPrompt(
+                            language = language,
+                            dictionaryWords = dictionaryWords,
+                            style = style,
+                            targetAppPackage = targetAppPackage,
+                        ),
+                    userMessage = buildUserMessage(ruleCleaned, surroundingText),
+                )
+            } catch (t: Throwable) {
+                // Keep pure-JVM tests working without android.util.Log
+                println("LocalVispr LLM completion FAILED: ${t.message}")
+                t.printStackTrace()
+                return ruleCleaned
+            }
 
         val sanitised = sanitiseModelOutput(rawModelOutput)
         val candidate = DictionaryReplacements.apply(sanitised, parsedDict.replacements)
@@ -153,11 +157,23 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
             return s
         }
 
-        // Guard against small-model failure modes: empty output, or a chatty explanation
-        // that is much longer than the dictated sentence.
+        private val CHATTY_ASSISTANT_PREFIX =
+            Regex(
+                """^(?:Natürlich|Gerne|Hier ist|Sicher|Sure|Certainly|Here is|As requested|Here's)[!,.:\s]""",
+                RegexOption.IGNORE_CASE,
+            )
+
+        // Guard against small-model runaway loops or catastrophic hallucinations,
+        // while allowing formatted emails (with blank lines, greetings, sign-offs).
         internal fun isPlausibleRewrite(input: String, candidate: String): Boolean {
-            if (candidate.isEmpty()) return false
-            val maxAllowedLength = (input.length * 2).coerceAtLeast(input.length + 24)
+            if (candidate.isBlank()) return false
+            if (
+                CHATTY_ASSISTANT_PREFIX.containsMatchIn(candidate) &&
+                    !CHATTY_ASSISTANT_PREFIX.containsMatchIn(input)
+            ) {
+                return false
+            }
+            val maxAllowedLength = (input.length * 4).coerceAtLeast(input.length + 300)
             return candidate.length <= maxAllowedLength
         }
 
