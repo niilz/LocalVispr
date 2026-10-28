@@ -86,6 +86,54 @@ class TranscriptPostProcessorTest {
     }
 
     @Test
+    fun buildSystemPromptIncludesEmailGuidanceOnlyForEmailApps() {
+        val emailPrompt =
+            TranscriptPostProcessor.buildSystemPrompt(
+                language = Language.GERMAN,
+                style = WritingStyle.FORMAL,
+                targetAppPackage = "com.google.android.gm",
+            )
+        assertTrue(emailPrompt.contains("WICHTIG für E-Mails"))
+
+        val slackPrompt =
+            TranscriptPostProcessor.buildSystemPrompt(
+                language = Language.GERMAN,
+                style = WritingStyle.FORMAL,
+                targetAppPackage = "com.Slack",
+            )
+        assertFalse(slackPrompt.contains("WICHTIG für E-Mails"))
+    }
+
+    @Test
+    fun processAppliesEmailFormattingForEmailApps() {
+        val fakeLlm = LlmClient { _, _ ->
+            "Hallo Herr Schmidt, danke für die Rückmeldung. Viele Grüße Markus"
+        }
+        val processor = TranscriptPostProcessor(fakeLlm)
+        val out =
+            processor.process(
+                rawTranscript = "Hallo Herr Schmidt danke für die Rückmeldung viele Grüße Markus",
+                language = Language.GERMAN,
+                targetAppPackage = "com.google.android.gm",
+            )
+        val expected = "Hallo Herr Schmidt,\n\ndanke für die Rückmeldung.\n\nViele Grüße\nMarkus"
+        assertEquals(expected, out)
+    }
+
+    @Test
+    fun processDoesNotApplyEmailFormattingOutsideEmailApps() {
+        val fakeLlm = LlmClient { _, _ -> "Hallo Team, hier ist das Update." }
+        val processor = TranscriptPostProcessor(fakeLlm)
+        val out =
+            processor.process(
+                rawTranscript = "Hallo Team hier ist das Update",
+                language = Language.GERMAN,
+                targetAppPackage = "com.Slack",
+            )
+        assertEquals("Hallo Team, hier ist das Update.", out)
+    }
+
+    @Test
     fun buildSystemPromptIncludesStyleInstructions() {
         for (style in WritingStyle.entries) {
             val dePrompt =

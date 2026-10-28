@@ -69,6 +69,14 @@ class ModelRepositoryTest {
     }
 
     @Test
+    fun catalogContainsGemma4Model() {
+        val gemma = ModelCatalog.byId("gemma-4-e2b")
+        assertTrue(gemma != null)
+        assertEquals(ModelKind.LLM, gemma.kind)
+        assertTrue(gemma.requiredFiles.single().endsWith(".litertlm"))
+    }
+
+    @Test
     fun deletesAnInstalledModelCleanly() {
         val root = Files.createTempDirectory("localvispr-models").toFile()
         try {
