@@ -100,8 +100,23 @@ object ModelCatalog {
                 ),
         )
 
+    val GEMMA_4_E2B =
+        ModelSpec(
+            id = "gemma-4-e2b",
+            title = "Gemma 4 E2B Instruct (CPU)",
+            subtitle = "High-quality formatting & structuring (~2.6 GB)",
+            kind = ModelKind.LLM,
+            approxSizeMb = 2590,
+            requiredFiles = listOf("gemma-4-E2B-it.litertlm"),
+            downloadUrls =
+                mapOf(
+                    "gemma-4-E2B-it.litertlm" to
+                        "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
+                ),
+        )
+
     val sttModels: List<ModelSpec> = listOf(WHISPER_TINY, WHISPER_BASE)
-    val llmModels: List<ModelSpec> = listOf(SMOLLM2_135M, QWEN3_0_6B)
+    val llmModels: List<ModelSpec> = listOf(SMOLLM2_135M, QWEN3_0_6B, GEMMA_4_E2B)
     val all: List<ModelSpec> = sttModels + llmModels
 
     // Start with the smallest models so the first-run download stays quick.

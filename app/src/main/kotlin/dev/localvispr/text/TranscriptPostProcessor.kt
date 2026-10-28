@@ -32,7 +32,14 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
         val parsedDict = DictionaryReplacements.parse(dictionaryWords)
         val ruleCleaned = FillerWordFilter.clean(rawTranscript, language, parsedDict.replacements)
         if (ruleCleaned.isEmpty()) return ""
-        val client = llm ?: return ruleCleaned
+        val isEmail = StyleCategory.categoryForPackage(targetAppPackage) == StyleCategory.EMAIL
+        val client =
+            llm
+                ?: return if (isEmail) {
+                    EmailLayoutFormatter.format(ruleCleaned, language)
+                } else {
+                    ruleCleaned
+                }
 
         val rawModelOutput =
             try {
@@ -50,16 +57,22 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
                 // Keep pure-JVM tests working without android.util.Log
                 println("LocalVispr LLM completion FAILED: ${t.message}")
                 t.printStackTrace()
-                return ruleCleaned
+                return if (isEmail) {
+                    EmailLayoutFormatter.format(ruleCleaned, language)
+                } else {
+                    ruleCleaned
+                }
             }
 
         val sanitised = sanitiseModelOutput(rawModelOutput)
         val candidate = DictionaryReplacements.apply(sanitised, parsedDict.replacements)
-        return if (isPlausibleRewrite(input = ruleCleaned, candidate = candidate)) {
-            candidate
-        } else {
-            ruleCleaned
-        }
+        val accepted =
+            if (isPlausibleRewrite(input = ruleCleaned, candidate = candidate)) {
+                candidate
+            } else {
+                ruleCleaned
+            }
+        return if (isEmail) EmailLayoutFormatter.format(accepted, language) else accepted
     }
 
     companion object {
@@ -92,25 +105,32 @@ class TranscriptPostProcessor(private val llm: LlmClient?) {
                 }
             val styleHint = "\nStil-Vorgabe: ${style.promptInstruction(language)}"
             val emailGuidance =
-                if (
-                    style == WritingStyle.FORMAL ||
-                        StyleCategory.categoryForPackage(targetAppPackage) == StyleCategory.EMAIL
-                ) {
+                if (StyleCategory.categoryForPackage(targetAppPackage) == StyleCategory.EMAIL) {
                     when (language) {
                         Language.GERMAN ->
-                            "\n\nWICHTIG für E-Mails: Gliedere den Text immer mit echten Absätzen (Leerzeilen)!\n" +
+                            "\n\nWICHTIG für E-Mails: Wenn der diktierte Text eine Begrüßung enthält, setze eine Leerzeile dahinter. " +
+                                "Gliedere Sinneinheiten mit echten Absätzen (Leerzeilen). " +
+                                "Wenn eine Grußformel diktiert wurde, setze eine Leerzeile davor und den Namen auf eine neue Zeile. " +
+                                "Erfinde niemals Grußformeln, Begrüßungen oder Namen hinzu, die nicht diktiert wurden.\n" +
                                 "Beispiel:\n" +
-                                "Hi Name,\n\n" +
-                                "vielen Dank für das nette Meeting. Ich freue mich auf das nächste.\n\n" +
+                                "Eingabe: hallo anna vielen dank für die rückmeldung ich prüfe das bis morgen viele grüße thomas\n" +
+                                "Ausgabe:\n" +
+                                "Hallo Anna,\n\n" +
+                                "vielen Dank für die Rückmeldung. Ich prüfe das bis morgen.\n\n" +
                                 "Viele Grüße\n" +
-                                "Nils"
+                                "Thomas"
                         Language.ENGLISH ->
-                            "\n\nIMPORTANT for emails: Always structure the message with clean blank lines between paragraphs, after greetings, and before sign-offs!\n" +
+                            "\n\nIMPORTANT for emails: When the dictation contains a greeting, place a blank line after it. " +
+                                "Structure distinct points with clean blank lines between paragraphs. " +
+                                "When a sign-off was dictated, place a blank line before it and the sender name on a new line. " +
+                                "Never invent greetings, sign-offs, or names that were not spoken.\n" +
                                 "Example:\n" +
-                                "Hi Name,\n\n" +
-                                "thanks for the meeting. Looking forward to the next one.\n\n" +
-                                "Best regards\n" +
-                                "Nils"
+                                "Input: hi anna thanks for the update i will review this by tomorrow best regards thomas\n" +
+                                "Output:\n" +
+                                "Hi Anna,\n\n" +
+                                "thanks for the update. I will review this by tomorrow.\n\n" +
+                                "Best regards,\n" +
+                                "Thomas"
                     }
                 } else {
                     ""
