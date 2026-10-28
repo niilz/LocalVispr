@@ -32,12 +32,8 @@ enum class WritingStyle(val id: String, val displayName: String, val subtitle: S
             Language.GERMAN ->
                 when (this) {
                     FORMAL ->
-                        "Formatiere den Text als förmliche E-Mail oder geschäftliche Nachricht. " +
-                            "Verwende die formelle Sie-Form ('Sie', 'Ihnen', 'Ihr' großgeschrieben). " +
-                            "Gliedere Sinneinheiten und neue Gedanken zwingend mit Absätzen (Leerzeilen). " +
-                            "Setze nach Anreden (z.B. 'Sehr geehrte Damen und Herren,', 'Hallo Herr ...,') " +
-                            "und vor Grußformeln (z.B. 'Mit freundlichen Grüßen', 'Beste Grüße') immer einen Zeilenumbruch. " +
-                            "Verwende vollständige, grammatikalisch einwandfreie Sätze mit präziser Zeichensetzung."
+                        "Vollständige Sätze, korrekte Groß-/Kleinschreibung und präzise Zeichensetzung. " +
+                            "Behalte die gewählte Anredeform (du/Sie) unverändert bei."
                     CASUAL ->
                         "Halte den Text in einem natürlichen, entspannten und freundlichen Umgangston. " +
                             "Verwende flüssigen Satzbau und normale Zeichensetzung."
@@ -49,11 +45,8 @@ enum class WritingStyle(val id: String, val displayName: String, val subtitle: S
             Language.ENGLISH ->
                 when (this) {
                     FORMAL ->
-                        "Format the text as a formal email or professional communication. " +
-                            "Structure distinct points and paragraphs with clean line breaks. " +
-                            "Place a line break after greetings (e.g. 'Dear Mr. ...,', 'Hi team,') " +
-                            "and before sign-offs (e.g. 'Best regards,', 'Sincerely,'). " +
-                            "Use complete, grammatically correct sentences with precise punctuation."
+                        "Use complete sentences, proper capitalization, and precise punctuation. " +
+                            "Keep the original register (formal or informal) unchanged."
                     CASUAL ->
                         "Keep the text natural, relaxed, and conversational with fluent punctuation."
                     VERY_CASUAL ->
