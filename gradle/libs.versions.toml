@@ -1,10 +1,10 @@
 [versions]
-agp = "8.13.2"
-kotlin = "2.1.10"
+agp = "9.4.1"
+kotlin = "2.2.10"
 coroutines = "1.10.2"
 composeBom = "2024.12.01"
 activityCompose = "1.10.1"
-coreKtx = "1.16.0"
+coreKtx = "1.19.1"
 lifecycle = "2.9.2"
 litertlm = "0.18.0"
 sherpaOnnx = "v1.13.5"
@@ -29,7 +29,5 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-# Only used to pin the Kotlin Gradle Plugin version for AGP's built-in Kotlin.
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
