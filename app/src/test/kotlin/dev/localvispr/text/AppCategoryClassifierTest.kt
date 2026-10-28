@@ -36,6 +36,17 @@ class AppCategoryClassifierTest {
             StyleCategory.EMAIL,
             StyleCategory.categoryForPackage("com.microsoft.office.outlook"),
         )
+        assertEquals(
+            StyleCategory.EMAIL,
+            StyleCategory.categoryForPackage("com.gmx.mobile.android.mail"),
+        )
+        assertEquals(
+            StyleCategory.EMAIL,
+            StyleCategory.categoryForPackage("de.web.mobile.android.mail"),
+        )
+        assertEquals(StyleCategory.EMAIL, StyleCategory.categoryForPackage("ch.protonmail.android"))
+        assertEquals(StyleCategory.EMAIL, StyleCategory.categoryForPackage("de.tutao.tutanota"))
+        assertEquals(StyleCategory.EMAIL, StyleCategory.categoryForPackage("com.superhuman.mail"))
     }
 
     @Test
