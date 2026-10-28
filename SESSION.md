@@ -20,3 +20,16 @@
   later on.
 - GitHub CLI (`gh`) is installed in the dev container but not authenticated (`gh auth login` required).
 
+- IME path (`VisprInputMethodService`) calls `TranscriptPostProcessor.process` without
+  `style`/`targetAppPackage`, so keyboard dictation always uses CASUAL and never gets email
+  formatting.
+- Unverified on device: whether LiteRT-LM throws on `initialize()` when `maxNumTokens = 2048`
+  exceeds a `.litertlm` file's compiled KV-cache (SmolLM2). The 512 fallback only helps if it
+  throws.
+- `emailGuidance` fires for `style == FORMAL`, which is the default for Work and Other too, so
+  Slack/Notion/browser text gets pushed toward email layout. In Wispr, paragraph breaks depend
+  on the app category (Email/Other), not on the Formal style.
+- The email few-shot example ends with the signature "Nils"; small models tend to copy it into
+  dictations that had no sign-off.
+- German FORMAL forces the Sie form, which changes content. Wispr's "Formal" only controls
+  capitalization and punctuation.
