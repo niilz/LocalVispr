@@ -82,18 +82,40 @@ class LiteRtLlmEngine(private val repository: ModelRepository, private val cache
         close()
 
         val modelFile = repository.llmFile(spec)
+        val initialized =
+            try {
+                initializeEngine(modelFile, LlmTokenBudget.MAX_NUM_TOKENS)
+            } catch (t: Throwable) {
+                android.util.Log.w(
+                    "LocalVispr",
+                    "ensureEngine: ${spec.id} rejected maxNumTokens=" +
+                        "${LlmTokenBudget.MAX_NUM_TOKENS}, retrying with " +
+                        "${LlmTokenBudget.FALLBACK_MAX_NUM_TOKENS}",
+                    t,
+                )
+                initializeEngine(modelFile, LlmTokenBudget.FALLBACK_MAX_NUM_TOKENS)
+            }
+        engine = initialized
+        loadedModelId = spec.id
+        return initialized
+    }
+
+    private fun initializeEngine(modelFile: File, maxNumTokens: Int): Engine {
         val config =
             EngineConfig(
                 modelPath = modelFile.absolutePath,
                 backend = Backend.CPU(),
                 cacheDir = cacheDir.absolutePath,
-                maxNumTokens = 512,
+                maxNumTokens = maxNumTokens,
             )
-        return Engine(config).also {
-            it.initialize()
-            engine = it
-            loadedModelId = spec.id
+        val candidate = Engine(config)
+        try {
+            candidate.initialize()
+        } catch (t: Throwable) {
+            runCatching { candidate.close() }
+            throw t
         }
+        return candidate
     }
 
     private fun isProbablyEmulator(): Boolean =
